@@ -1,0 +1,178 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Statut {
+  actif
+  inactif
+}
+
+enum EtatApurement {
+  apure
+  apure_se
+  non_apure
+  rejetter
+}
+
+model MaisonTransit {
+  id          Int    @id @default(autoincrement())
+  nom         String
+  description String
+
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @default(now())
+  deletedAt    DateTime?
+  OrdreMission OrdreMission[]
+
+  @@map("maison_transits")
+}
+
+model Regime {
+  id           Int           @id @default(autoincrement())
+  libelle      String
+  declarations Declaration[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  @@map("regimes")
+}
+
+model BureauSortie {
+  id            Int            @id @default(autoincrement())
+  nom           String
+  code          String         @unique
+  ville         String
+  region        String
+  statut        Statut         @default(actif)
+  ordresMission OrdreMission[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("bureaux_sortie")
+}
+
+model Agent {
+  id              Int    @id @default(autoincrement())
+  nom             String
+  prenom          String
+  matricule       String @unique
+  telephone       String
+  grade           String
+  dateAffectation String
+  statut          Statut @default(actif)
+
+  escouadeChef    Escouade[] @relation("EscouadeChef")
+  escouadeAdjoint Escouade[] @relation("EscouadeAdjoint")
+  agentEscort     Escouade[] @relation("EscouadeAgents")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("agents")
+  EscouadeAgents EscouadeAgents[]
+}
+
+model EscouadeAgents {
+  escouadeId Int
+  agentId    Int
+
+  escouade Escouade @relation(fields: [escouadeId], references: [id])
+  agent    Agent    @relation(fields: [agentId], references: [id])
+
+  @@id([escouadeId, agentId])
+  @@map("escouade_agents")
+}
+
+model Escouade {
+  id           Int    @id @default(autoincrement())
+  nom          String @unique
+  description  String @db.Text
+  statut       Statut @default(inactif)
+  dateCreation String
+
+  chef   Agent? @relation("EscouadeChef", fields: [chefId], references: [id])
+  chefId Int?   @unique
+
+  adjoint   Agent? @relation("EscouadeAdjoint", fields: [adjointId], references: [id])
+  adjointId Int?   @unique
+
+  agents Agent[] @relation("EscouadeAgents")
+
+  OrdreMission OrdreMission[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("escouades")
+  EscouadeAgents EscouadeAgents[]
+}
+
+model Declaration {
+  id              Int    @id @default(autoincrement())
+  num_ordre       Int    @unique
+  num_declaration String
+  nbre_colis      Int
+  poids           Float
+  marchandise     String
+  depositaire     String
+  telephone       String
+
+  etatApurement EtatApurement @default(non_apure)
+
+  regime   Regime @relation(fields: [regimeId], references: [id])
+  regimeId Int
+
+  OrdreMission OrdreMission[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  @@map("declarations")
+}
+
+model OrdreMission {
+  id                  Int           @id @default(autoincrement())
+  numeroOrdre         String        @unique
+  date                String // JSON array stored as text
+  poidsTotal          Float
+  nombreColisTotal    Int
+  naturesMarchandises String        @db.Text // JSON array stored as text
+  depositaire         String
+  telephone_dep       String
+  etatApurement       EtatApurement @default(non_apure)
+
+  declaration Declaration[]
+
+  bureauSortie   BureauSortie @relation(fields: [bureauSortieId], references: [id])
+  bureauSortieId Int
+
+  escouade   Escouade @relation(fields: [escouadeId], references: [id])
+  escouadeId Int
+
+  maisonId      Int
+  maisonTransit MaisonTransit @relation(fields: [maisonId], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("ordres_mission")
+}
