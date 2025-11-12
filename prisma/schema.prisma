@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,35 +7,69 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Statut {
-  actif
-  inactif
+enum UserRole {
+  ADMIN
+  AGENT
+  SUPERVISEUR
+  TRANSITAIRE
 }
 
-enum EtatApurement {
-  apure
-  apure_se
-  non_apure
-  rejetter
+enum StatutApurement {
+  APURE_SE
+  APURE
+  NON_APURE
+  REJET
 }
 
-model MaisonTransit {
-  id          Int    @id @default(autoincrement())
-  nom         String
-  description String
+enum StatutOrdreMission {
+  EN_COURS
+  DEPOSE
+  TRAITE
+  REJETE
+  ANNULE
+}
 
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @default(now())
-  deletedAt    DateTime?
-  OrdreMission OrdreMission[]
+enum TypeNotification {
+  INFO
+  WARNING
+  ERROR
+  SUCCESS
+}
 
-  @@map("maison_transits")
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  username     String    @unique @db.VarChar(100)
+  email        String    @unique @db.VarChar(255)
+  passwordHash String    @map("password_hash")
+  firstname    String    @map("first_name")
+  lastname     String    @map("last_name")
+  phone        String?
+  role         UserRole
+  isActive     Boolean?  @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  lastLogin    DateTime? @map("last_login")
+  deletedAt    DateTime? @map("deleted_at")
+
+  declarations   Declaration[]
+  colis          Colis[]
+  maisonTransits MaisonTransit[]
+  ordreMissions  OrdreMission[]
+  auditLogs      AuditLog[]
+
+  @@map("users")
 }
 
 model Regime {
-  id           Int           @id @default(autoincrement())
-  libelle      String
-  declarations Declaration[]
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @default(now())
@@ -50,41 +78,47 @@ model Regime {
   @@map("regimes")
 }
 
-model BureauSortie {
-  id            Int            @id @default(autoincrement())
-  nom           String
-  code          String         @unique
-  ville         String
-  region        String
-  statut        Statut         @default(actif)
-  ordresMission OrdreMission[]
+model Escouade {
+  id              Int       @id @default(autoincrement())
+  name            String    @unique
+  description     String?   @db.Text
+  operationalDate DateTime?
+  chefId          Int?
+  adjointId       Int?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  chef           Agent?           @relation("EscouadeChef", fields: [chefId], references: [id])
+  adjoint        Agent?           @relation("EscouadeAdjoint", fields: [adjointId], references: [id])
+  escouadeAgents EscouadeAgents[]
+  agent          Agent?           @relation(fields: [agentId], references: [id])
+  agentId        Int?
 
-  @@map("bureaux_sortie")
+  @@map("escouades")
 }
 
 model Agent {
-  id              Int    @id @default(autoincrement())
-  nom             String
-  prenom          String
-  matricule       String @unique
-  telephone       String
-  grade           String
-  dateAffectation String
-  statut          Statut @default(actif)
+  id         Int       @id @default(autoincrement())
+  matricule  String?   @unique
+  grade      String?
+  firstname  String    @map("first_name")
+  lastname   String    @map("last_name")
+  phone      String?
+  email      String?
+  affectedAt DateTime? @map("affected_at")
+  officeId   Int?      @map("office_id")
+  isActive   Boolean   @default(true) @map("is_active")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
 
-  escouadeChef    Escouade[] @relation("EscouadeChef")
-  escouadeAdjoint Escouade[] @relation("EscouadeAdjoint")
-  agentEscort     Escouade[] @relation("EscouadeAgents")
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-  
-  EscouadeAgents EscouadeAgents[]
+  bureauAffectation  BureauSortie?    @relation(fields: [officeId], references: [id], onDelete: SetNull)
+  declarations       Declaration[]
+  escouadesAsChef    Escouade[]       @relation("EscouadeChef")
+  escouadesAsAdjoint Escouade[]       @relation("EscouadeAdjoint")
+  escouadeAgents     EscouadeAgents[]
+  ordreMissions      OrdreMission[]
+  escouades          Escouade[]
 
   @@map("agents")
 }
@@ -100,82 +134,168 @@ model EscouadeAgents {
   @@map("escouade_agents")
 }
 
-model Escouade {
-  id           Int    @id @default(autoincrement())
-  nom          String @unique
-  description  String @db.Text
-  statut       Statut @default(inactif)
-  dateCreation String
+model BureauSortie {
+  id            Int       @id @default(autoincrement())
+  code          String    @unique
+  name          String
+  localisation  String?
+  paysFrontiere String?   @map("pays_frontiere")
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
 
-  chef   Agent? @relation("EscouadeChef", fields: [chefId], references: [id])
-  chefId Int?   @unique
+  declarations  Declaration[]
+  agents        Agent[]
+  ordreMissions OrdreMission[]
 
-  adjoint   Agent? @relation("EscouadeAdjoint", fields: [adjointId], references: [id])
-  adjointId Int?   @unique
+  @@map("bureaux_sorties")
+}
 
-  agents Agent[] @relation("EscouadeAgents")
+model MaisonTransit {
+  id            Int       @id @default(autoincrement())
+  code          String    @unique
+  name          String
+  address       String?   @db.Text
+  phone         String?
+  email         String?
+  responsableId Int?      @map("responsable_id")
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
 
-  OrdreMission OrdreMission[]
+  responsable  User?         @relation(fields: [responsableId], references: [id])
+  depositaires Depositaire[]
+  declarations Declaration[]
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  @@map("maisons_transits")
+}
 
-  
-  EscouadeAgents EscouadeAgents[]
+model OrdreMission {
+  id               Int                @id @default(autoincrement())
+  number           Int                @unique @map("number")
+  destination      String?
+  itinéraire      String?            @db.Text
+  dateOrdre        DateTime?          @map("date_ordre")
+  depositaireId    Int?               @map("depositaire_id")
+  maisonTransitId  Int?               @map("maison_transit_id")
+  createdById      Int?               @map("created_by")
+  statut           StatutOrdreMission @default(EN_COURS)
+  statutApurement  StatutApurement    @default(NON_APURE) @map("statut_apurement")
+  agentEscorteurId Int?               @map("agent_escorteur_id")
+  bureauSortieId   Int?               @map("bureau_sortie_id")
+  observations     String?            @db.Text
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+  deletedAt        DateTime?          @map("deleted_at")
 
-  @@map("escouades")
+  depositaire    Depositaire?  @relation(fields: [depositaireId], references: [id], onDelete: SetNull)
+  createdBy      User?         @relation(fields: [createdById], references: [id])
+  agentEscorteur Agent?        @relation(fields: [agentEscorteurId], references: [id], onDelete: SetNull)
+  bureauSortie   BureauSortie? @relation(fields: [bureauSortieId], references: [id], onDelete: SetNull)
+  declarations   Declaration[]
+  colis          Colis[]
+
+  @@map("ordres_missions")
+}
+
+model Depositaire {
+  id                   Int       @id @default(autoincrement())
+  name                 String
+  phone1               String    @db.VarChar(20)
+  phone2               String?
+  address              String?   @db.Text
+  email                String?
+  identificationNumber String?   @map("identification_number")
+  isActive             Boolean   @default(true) @map("is_active")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  deletedAt            DateTime? @map("deleted_at")
+
+  savedDeclarations Declaration[]
+  maisonTransit     MaisonTransit? @relation(fields: [maisonTransitId], references: [id])
+  maisonTransitId   Int?
+  ordreMissions     OrdreMission[]
+
+  @@map("depositaires")
 }
 
 model Declaration {
-  id              Int    @id @default(autoincrement())
-  num_ordre       Int    @unique
-  num_declaration String
-  nbre_colis      Int
-  poids           Float
-  marchandise     String
-  depositaire     String
-  telephone       String
+  id                Int              @id @default(autoincrement())
+  numeroDeclaration String           @unique @map("numero_declaration") @db.VarChar(50)
+  dateDeclaration   DateTime         @map("date_declaration") @db.Date
+  ordreMissionId    Int?             @map("ordre_mission_id")
+  statutApurement   StatutApurement? @default(NON_APURE) @map("statut_apurement")
+  dateApurement     DateTime?        @map("date_apurement") @db.Date
+  motifRejet        String?          @map("motif_rejet") @db.Text
 
-  etatApurement EtatApurement @default(non_apure)
+  createdById Int?      @map("created_by")
+  updatedById Int?      @map("updated_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
 
-  regime   Regime @relation(fields: [regimeId], references: [id])
-  regimeId Int
-
-  OrdreMission OrdreMission[]
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @default(now())
-  deletedAt DateTime?
+  ordreMission    OrdreMission?  @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
+  createdBy       User?          @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  agent           Agent?         @relation(fields: [agentId], references: [id])
+  agentId         Int?
+  bureauSortie    BureauSortie?  @relation(fields: [bureauSortieId], references: [id])
+  bureauSortieId  Int?
+  maisonTransit   MaisonTransit? @relation(fields: [maisonTransitId], references: [id])
+  maisonTransitId Int?
+  depositaire     Depositaire?   @relation(fields: [depositaireId], references: [id])
+  depositaireId   Int?
 
   @@map("declarations")
 }
 
-model OrdreMission {
-  id                  Int           @id @default(autoincrement())
-  numeroOrdre         String        @unique
-  date                String // JSON array stored as text
-  poidsTotal          Float
-  nombreColisTotal    Int
-  naturesMarchandises String        @db.Text // JSON array stored as text
-  depositaire         String
-  telephone_dep       String
-  etatApurement       EtatApurement @default(non_apure)
+model Colis {
+  id                Int      @id @default(autoincrement())
+  ordreMissionId    Int?     @map("ordre_mission_id")
+  natureMarchandise String   @map("nature_marchandise") @db.Text
+  positionTarifaire Int?     @map("position_tarifaire")
+  poids             Decimal? @map("poids") @db.Decimal(12, 2)
+  valeurDeclaree    Decimal? @map("valeur_declaree") @db.Decimal(15, 2)
 
-  declaration Declaration[]
+  createdById Int?      @map("created_by")
+  updatedById Int?      @map("updated_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
 
-  bureauSortie   BureauSortie @relation(fields: [bureauSortieId], references: [id])
-  bureauSortieId Int
+  ordreMission OrdreMission? @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
+  createdBy    User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
-  escouade   Escouade @relation(fields: [escouadeId], references: [id])
-  escouadeId Int
+  @@map("colis")
+}
 
-  maisonId      Int
-  maisonTransit MaisonTransit @relation(fields: [maisonId], references: [id])
+model Transport {
+  id                Int       @id @default(autoincrement())
+  immatriculation   String
+  driverName        String?   @map("driver_name")
+  driverNationality String?   @map("driver_nationality")
+  phone             String?   @map("ip_address")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  @@map("transports")
+}
 
-  @@map("ordres_mission")
+model AuditLog {
+  id          Int         @id @default(autoincrement())
+  tableName   String?     @map("table_name") @db.VarChar(100)
+  Description String?
+  action      AuditAction
+  oldValues   Json?       @map("old_values")
+  newValues   Json?       @map("new_values")
+  userId      Int?        @map("user_id")
+  ipAddress   String?     @map("ip_address")
+  userAgent   String?     @map("user_agent") @db.Text
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_log")
 }
