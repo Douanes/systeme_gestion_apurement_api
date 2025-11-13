@@ -196,6 +196,9 @@ model OrdreMission {
   bureauSortie   BureauSortie? @relation(fields: [bureauSortieId], references: [id], onDelete: SetNull)
   declarations   Declaration[]
   colis          Colis[]
+  camions        Camion[]
+  conteneurs     Conteneur[]
+  voitures       Voiture[]
 
   @@map("ordres_missions")
 }
@@ -270,8 +273,9 @@ model Colis {
   @@map("colis")
 }
 
-model Transport {
+model Camion {
   id                Int       @id @default(autoincrement())
+  ordreMissionId    Int?      @map("ordre_mission_id")
   immatriculation   String
   driverName        String?   @map("driver_name")
   driverNationality String?   @map("driver_nationality")
@@ -280,7 +284,41 @@ model Transport {
   updatedAt         DateTime  @updatedAt @map("updated_at")
   deletedAt         DateTime? @map("deleted_at")
 
+  ordreMission OrdreMission? @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
+
   @@map("transports")
+}
+
+model Conteneur {
+  id                Int       @id @default(autoincrement())
+  ordreMissionId    Int?      @map("ordre_mission_id")
+  numConteneur      String    @map("num_conteneur")
+  driverName        String?   @map("driver_name")
+  driverNationality String?   @map("driver_nationality")
+  phone             String?   @map("ip_address")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  ordreMission OrdreMission? @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
+
+  @@map("conteneurs")
+}
+
+model Voiture {
+  id                Int       @id @default(autoincrement())
+  ordreMissionId    Int?      @map("ordre_mission_id")
+  chassis           String    @map("chassis")
+  driverName        String?   @map("driver_name")
+  driverNationality String?   @map("driver_nationality")
+  phone             String?   @map("ip_address")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  ordreMission OrdreMission? @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
+
+  @@map("voitures")
 }
 
 model AuditLog {
