@@ -97,3 +97,98 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+```
+systeme_gestion_apurement_api
+├─ libs
+│  ├─ config
+│  ├─ cors
+│  │  └─ cors.config.ts
+│  ├─ decorators
+│  ├─ dto
+│  │  ├─ agent.dto.ts
+│  │  ├─ bureau-sortie.dto.ts
+│  │  ├─ declaration.dto.ts
+│  │  ├─ escouade.dto.ts
+│  │  ├─ global
+│  │  ├─ maison_transit.dto.ts
+│  │  ├─ ordre-mission.dto.ts
+│  │  ├─ regime.dto.ts
+│  │  └─ user
+│  ├─ entity
+│  │  ├─ agent.entity.ts
+│  │  ├─ bureau-sortie.entity.ts
+│  │  ├─ declaration.entity.ts
+│  │  ├─ escouade.entity.ts
+│  │  ├─ maison-transit.entity.ts
+│  │  ├─ ordre-mission.entity.ts
+│  │  ├─ regime.entity.ts
+│  │  └─ user
+│  ├─ enums
+│  ├─ errors
+│  │  └─ error-response.dto.ts
+│  ├─ filters
+│  ├─ global
+│  │  └─ search.dto.ts
+│  ├─ guards
+│  ├─ interceptors
+│  ├─ pipes
+│  ├─ pips
+│  │  └─ validateId.pipe.ts
+│  └─ schema
+│     ├─ agent-escort.schema.ts
+│     ├─ bureau-sorti.schema.ts
+│     ├─ cotation.schema.ts
+│     ├─ declaration.schema.ts
+│     ├─ maison-transit.schema.ts
+│     ├─ regime.schema.ts
+│     └─ statut-apurement.schema.ts
+├─ nest-cli.json
+├─ package-lock.json
+├─ package.json
+├─ prisma
+│  ├─ migrations
+│  │  └─ 20251113103235_init
+│  ├─ prisma.module.ts
+│  ├─ prisma.service.ts
+│  └─ schema.prisma
+├─ README.md
+├─ src
+│  ├─ agent
+│  │  ├─ agent.controller.ts
+│  │  ├─ agent.module.ts
+│  │  └─ agent.service.ts
+│  ├─ app.module.ts
+│  ├─ bureau-sortie
+│  │  ├─ bureau-sortie.controller.ts
+│  │  ├─ bureau-sortie.module.ts
+│  │  └─ bureau-sortie.service.ts
+│  ├─ declaration
+│  │  ├─ declaration.controller.ts
+│  │  ├─ declaration.module.ts
+│  │  └─ declaration.service.ts
+│  ├─ escouade
+│  │  ├─ escouade.controller.ts
+│  │  ├─ escouade.module.ts
+│  │  └─ escouade.service.ts
+│  ├─ main.ts
+│  ├─ maison-transit
+│  │  ├─ maison-transit.controller.ts
+│  │  ├─ maison-transit.module.ts
+│  │  └─ maison-transit.service.ts
+│  ├─ ordre-mission
+│  │  ├─ ordre-mission.controller.ts
+│  │  ├─ ordre-mission.module.ts
+│  │  └─ ordre-mission.service.ts
+│  ├─ regime
+│  │  ├─ regime.controller.ts
+│  │  ├─ regime.module.ts
+│  │  └─ regime.service.ts
+│  └─ user
+├─ test
+│  ├─ app.e2e-spec.ts
+│  └─ jest-e2e.json
+├─ tsconfig.build.json
+└─ tsconfig.json
+
+```

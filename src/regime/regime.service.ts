@@ -1,95 +1,100 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
-import { Regime } from '@prisma/client';
-import { CreateRegimeDto, UpdateRegimeDto } from 'libs/dto/regime.dto';
-import { SearchDto } from 'libs/global/search.dto';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
+import { CreateRegimeDto, UpdateRegimeDto, RegimeResponseDto } from 'libs/dto/regime/regime.dto';
+import { PaginationQueryDto } from 'libs/dto/global/pagination.dto';
+import { PaginatedResponseDto } from 'libs/dto/global/response.dto';
 import { PrismaService } from 'prisma/prisma.service';
+import { Regime } from '@prisma/client';
 
 @Injectable()
 export class RegimeService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
-  // Récupérer tous les régimes avec pagination et recherche
-  async findAll(searchDto?: SearchDto): Promise<{ size: number; data: Regime[] }> {
-    searchDto = searchDto || {};
-
-    const {
-      q,
-      order_by = 'id',
-      order_dir = 'desc',
-      limit = 10,
-      offset = 0,
-    } = searchDto;
-
-    const where = {
-      deletedAt: null,
-      ...(q ? { libelle: { contains: q } } : {}),
-    };
-
-    const validOrderByFields = {
-      id: 'id',
-      libelle: 'libelle',
-    };
-
-    const orderBy = {
-      [validOrderByFields[order_by] || 'id']: order_dir,
-    };
-
-    try {
-      const [data, size] = await Promise.all([
-        this.prisma.regime.findMany({
-          where,
-          orderBy,
-          skip: offset,
-          take: limit,
-        }),
-        this.prisma.regime.count({ where }),
-      ]);
-
-      return {
-        size,
-        data,
-      };
-    } catch (error) {
-      console.error('Error during findAll:', error);
-      throw new HttpException(
-        `Erreur lors de la récupération des régimes.`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-  
-  // Créer un régime
-  async create(createRegimeDto: CreateRegimeDto): Promise<Regime> {
+  /**
+   * Créer un nouveau régime
+   */
+  async create(createRegimeDto: CreateRegimeDto): Promise<RegimeResponseDto> {
+    // Vérifier si un régime avec le même nom existe déjà
     const existingRegime = await this.prisma.regime.findFirst({
       where: {
-        libelle: {
-          equals: createRegimeDto.libelle.toLowerCase(),
-        },
+        name: createRegimeDto.name,
+        deletedAt: null,
       },
     });
 
     if (existingRegime) {
-      throw new HttpException(
-        `Le régime avec le libellé "${createRegimeDto.libelle}" existe déjà.`,
-        HttpStatus.CONFLICT,
+      throw new ConflictException(
+        `Un régime avec le nom "${createRegimeDto.name}" existe déjà`,
       );
     }
 
-    try {
-      return await this.prisma.regime.create({
-        data: createRegimeDto,
-      });
-    } catch (error) {
-      console.error('Error during create:', error);
-      throw new HttpException(
-        `Une erreur s'est produite lors de la création du régime.`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    const regime = await this.prisma.regime.create({
+      data: {
+        name: createRegimeDto.name,
+        description: createRegimeDto.description,
+      },
+    });
+
+    return this.toResponseDto(regime);
   }
 
-  // Récupérer un régime par ID
-  async findOne(id: number): Promise<Regime> {
+  /**
+   * Récupérer tous les régimes avec pagination
+   */
+  async findAll(
+    paginationQuery: PaginationQueryDto,
+  ): Promise<PaginatedResponseDto<RegimeResponseDto>> {
+    const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc' } = paginationQuery;
+
+    const skip = (page - 1) * limit;
+
+    // Construction du filtre de recherche
+    const where: any = {
+      deletedAt: null,
+    };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search } },
+        { description: { contains: search } },
+      ];
+    }
+
+    // Récupération des données
+    const [regimes, total] = await Promise.all([
+      this.prisma.regime.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: {
+          [sortBy]: sortOrder,
+        },
+      }),
+      this.prisma.regime.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: regimes.map(regime => this.toResponseDto(regime)),
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrevious: page > 1,
+      },
+    };
+  }
+
+  /**
+   * Récupérer un régime par ID
+   */
+  async findOne(id: number): Promise<RegimeResponseDto> {
     const regime = await this.prisma.regime.findFirst({
       where: {
         id,
@@ -98,91 +103,91 @@ export class RegimeService {
     });
 
     if (!regime) {
-      throw new HttpException(
-        `Régime non trouvé.`,
-        HttpStatus.NOT_FOUND,
-      );
+      throw new NotFoundException(`Régime avec l'ID ${id} non trouvé`);
     }
 
-    return regime;
+    return this.toResponseDto(regime);
   }
 
-  // Mettre à jour un régime
-  async update(id: number, updateRegimeDto: UpdateRegimeDto): Promise<Regime> {
-    await this.findOne(id); // Vérifie si le régime existe
+  /**
+   * Mettre à jour un régime
+   */
+  async update(
+    id: number,
+    updateRegimeDto: UpdateRegimeDto,
+  ): Promise<RegimeResponseDto> {
+    // Vérifier si le régime existe
+    await this.findOne(id);
 
-    try {
-      return await this.prisma.$transaction(async (prisma) => {
-        if (updateRegimeDto.libelle) {
-          const conflictingRegime = await prisma.regime.findFirst({
-            where: {
-              libelle: updateRegimeDto.libelle,
-              id: { not: id },
-            },
-          });
-
-          if (conflictingRegime) {
-            throw new HttpException(
-              `Un régime avec ce libellé existe déjà.`,
-              HttpStatus.CONFLICT,
-            );
-          }
-        }
-
-        return await prisma.regime.update({
-          where: { id },
-          data: updateRegimeDto,
-        });
+    // Si le nom est modifié, vérifier qu'il n'existe pas déjà
+    if (updateRegimeDto.name) {
+      const existingRegime = await this.prisma.regime.findFirst({
+        where: {
+          name: updateRegimeDto.name,
+          id: { not: id },
+          deletedAt: null,
+        },
       });
-    } catch (error) {
-      console.error('Error during update:', error);
-      throw new HttpException(
-        `Une erreur s'est produite lors de la mise à jour du régime.`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
 
-  // Supprimer un régime (soft delete)
-  async remove(id: number): Promise<{ success: boolean }> {
-    await this.findOne(id); // Vérifie si le régime existe
-    try {
-      await this.prisma.regime.update({
-        where: { id },
-        data: { deletedAt: new Date() },
-      });
-      return { success: true };
-    } catch (error) {
-      throw new HttpException(
-        `Une erreur s'est produite lors de la suppression du régime.`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      if (existingRegime) {
+        throw new ConflictException(
+          `Un régime avec le nom "${updateRegimeDto.name}" existe déjà`,
+        );
+      }
     }
-  }
 
-  // Restaurer un régime supprimé
-  async restore(id: number): Promise<Regime> {
-    const regime = await this.prisma.regime.findUnique({
+    const regime = await this.prisma.regime.update({
       where: { id },
+      data: {
+        name: updateRegimeDto.name,
+        description: updateRegimeDto.description,
+        updatedAt: new Date(),
+      },
     });
 
-    if (!regime || !regime.deletedAt) {
-      throw new HttpException(
-        `Régime non trouvé.`,
-        HttpStatus.NOT_FOUND,
-      );
-    }
+    return this.toResponseDto(regime);
+  }
 
-    try {
-      return await this.prisma.regime.update({
-        where: { id },
-        data: { deletedAt: null },
-      });
-    } catch (error) {
-      throw new HttpException(
-        `Une erreur s'est produite lors de la restauration du régime.`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+  /**
+   * Supprimer un régime (soft delete)
+   */
+  async remove(id: number): Promise<void> {
+    // Vérifier si le régime existe
+    await this.findOne(id);
+
+    // Soft delete
+    await this.prisma.regime.update({
+      where: { id },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+  }
+
+  /**
+   * Récupérer tous les régimes (sans pagination) - utile pour les listes déroulantes
+   */
+  async findAllSimple(): Promise<RegimeResponseDto[]> {
+    const regimes = await this.prisma.regime.findMany({
+      where: {
+        deletedAt: null,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+
+    return regimes.map(regime => this.toResponseDto(regime));
+  }
+
+  private toResponseDto(regime: Regime): RegimeResponseDto {
+    return {
+      id: regime.id,
+      name: regime.name,
+      description: regime.description,
+      createdAt: regime.createdAt,
+      updatedAt: regime.updatedAt,
+    };
   }
 }
+
