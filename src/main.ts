@@ -30,8 +30,6 @@ async function bootstrap() {
       'bureaux de sortie, maisons de transit et autres entités liées au processus d\'apurement.'
     )
     .setVersion('1.0')
-    .addTag('Authentification', 'Endpoints pour l\'authentification et la gestion des sessions')
-    .addTag('Régimes', 'Gestion des régimes douaniers')
     .addBearerAuth(
       {
         type: 'http',
