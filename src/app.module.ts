@@ -4,6 +4,7 @@ import { PrismaModule } from 'prisma/prisma.module';
 import { BureauSortieModule } from './bureau-sortie/office.module';
 import { MaisonTransitModule } from './maison-transit/transit.module';
 import { EscouadeModule } from './escouade/escouade.module';
+import { AgentModule } from './agent/agent.module';
 
 @Module({
   imports: [
@@ -11,7 +12,8 @@ import { EscouadeModule } from './escouade/escouade.module';
     RegimeModule,
     BureauSortieModule,
     MaisonTransitModule,
-    EscouadeModule
+    EscouadeModule,
+    AgentModule
   ],
   providers: [],
 })
