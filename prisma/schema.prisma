@@ -165,9 +165,10 @@ model MaisonTransit {
   updatedAt     DateTime  @updatedAt @map("updated_at")
   deletedAt     DateTime? @map("deleted_at")
 
-  responsable  User?         @relation(fields: [responsableId], references: [id])
-  depositaires Depositaire[]
-  declarations Declaration[]
+  responsable   User?          @relation(fields: [responsableId], references: [id])
+  depositaires  Depositaire[]
+  declarations  Declaration[]
+  ordreMissions OrdreMission[]
 
   @@map("maisons_transits")
 }
@@ -190,10 +191,11 @@ model OrdreMission {
   updatedAt        DateTime           @updatedAt @map("updated_at")
   deletedAt        DateTime?          @map("deleted_at")
 
-  depositaire    Depositaire?  @relation(fields: [depositaireId], references: [id], onDelete: SetNull)
-  createdBy      User?         @relation(fields: [createdById], references: [id])
-  agentEscorteur Agent?        @relation(fields: [agentEscorteurId], references: [id], onDelete: SetNull)
-  bureauSortie   BureauSortie? @relation(fields: [bureauSortieId], references: [id], onDelete: SetNull)
+  depositaire    Depositaire?   @relation(fields: [depositaireId], references: [id], onDelete: SetNull)
+  createdBy      User?          @relation(fields: [createdById], references: [id])
+  agentEscorteur Agent?         @relation(fields: [agentEscorteurId], references: [id], onDelete: SetNull)
+  bureauSortie   BureauSortie?  @relation(fields: [bureauSortieId], references: [id], onDelete: SetNull)
+  maisonTransit  MaisonTransit? @relation(fields: [maisonTransitId], references: [id], onDelete: SetNull)
   declarations   Declaration[]
   colis          Colis[]
   camions        Camion[]
@@ -232,6 +234,9 @@ model Declaration {
   statutApurement   StatutApurement? @default(NON_APURE) @map("statut_apurement")
   dateApurement     DateTime?        @map("date_apurement") @db.Date
   motifRejet        String?          @map("motif_rejet") @db.Text
+  bureauSortieId    Int?
+  maisonTransitId   Int?
+  depositaireId     Int?
 
   createdById Int?      @map("created_by")
   updatedById Int?      @map("updated_by")
@@ -239,16 +244,13 @@ model Declaration {
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
 
-  ordreMission    OrdreMission?  @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
-  createdBy       User?          @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  agent           Agent?         @relation(fields: [agentId], references: [id])
-  agentId         Int?
-  bureauSortie    BureauSortie?  @relation(fields: [bureauSortieId], references: [id])
-  bureauSortieId  Int?
-  maisonTransit   MaisonTransit? @relation(fields: [maisonTransitId], references: [id])
-  maisonTransitId Int?
-  depositaire     Depositaire?   @relation(fields: [depositaireId], references: [id])
-  depositaireId   Int?
+  ordreMission  OrdreMission?  @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
+  createdBy     User?          @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  bureauSortie  BureauSortie?  @relation(fields: [bureauSortieId], references: [id])
+  maisonTransit MaisonTransit? @relation(fields: [maisonTransitId], references: [id])
+  depositaire   Depositaire?   @relation(fields: [depositaireId], references: [id])
+  agent         Agent?         @relation(fields: [agentId], references: [id])
+  agentId       Int?
 
   @@map("declarations")
 }

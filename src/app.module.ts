@@ -5,6 +5,7 @@ import { BureauSortieModule } from './bureau-sortie/office.module';
 import { MaisonTransitModule } from './maison-transit/transit.module';
 import { EscouadeModule } from './escouade/escouade.module';
 import { AgentModule } from './agent/agent.module';
+import { OrdreMissionModule } from './ordre-mission/ordre.module';
 
 @Module({
   imports: [
@@ -13,7 +14,8 @@ import { AgentModule } from './agent/agent.module';
     BureauSortieModule,
     MaisonTransitModule,
     EscouadeModule,
-    AgentModule
+    AgentModule,
+    OrdreMissionModule
   ],
   providers: [],
 })
