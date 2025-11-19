@@ -6,6 +6,7 @@ import { MaisonTransitModule } from './maison-transit/transit.module';
 import { EscouadeModule } from './escouade/escouade.module';
 import { AgentModule } from './agent/agent.module';
 import { OrdreMissionModule } from './ordre-mission/ordre.module';
+import { StatisticsModule } from './statistique/statistics.module';
 
 @Module({
   imports: [
@@ -15,7 +16,8 @@ import { OrdreMissionModule } from './ordre-mission/ordre.module';
     MaisonTransitModule,
     EscouadeModule,
     AgentModule,
-    OrdreMissionModule
+    OrdreMissionModule,
+    StatisticsModule
   ],
   providers: [],
 })
