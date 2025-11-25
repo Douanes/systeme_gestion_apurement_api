@@ -1,0 +1,85 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const core_1 = require("@nestjs/core");
+const common_1 = require("@nestjs/common");
+const swagger_1 = require("@nestjs/swagger");
+const app_module_1 = require("./app.module");
+async function bootstrap() {
+    const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    app.useGlobalPipes(new common_1.ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+        transformOptions: {
+            enableImplicitConversion: true,
+        },
+    }));
+    app.enableCors();
+    const config = new swagger_1.DocumentBuilder()
+        .setTitle('Système de Gestion d\'Apurement API')
+        .setDescription('API REST pour le système de gestion d\'apurement des douanes. ' +
+        'Cette API permet de gérer les déclarations, ordres de mission, agents, ' +
+        'bureaux de sortie, maisons de transit et autres entités liées au processus d\'apurement.')
+        .setVersion('1.0')
+        .addBearerAuth({
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'Entrez votre token JWT',
+    }, 'JWT-auth')
+        .addServer('http://localhost:3000', 'Serveur de développement')
+        .addServer('https://api.example.com', 'Serveur de production')
+        .setContact('Support Technique', 'https://example.com', 'support@example.com')
+        .setLicense('MIT', 'https://opensource.org/licenses/MIT')
+        .build();
+    const document = swagger_1.SwaggerModule.createDocument(app, config);
+    swagger_1.SwaggerModule.setup('api/docs', app, document, {
+        swaggerOptions: {
+            persistAuthorization: true,
+            docExpansion: 'none',
+            filter: true,
+            showRequestDuration: true,
+        },
+    });
+    app.getHttpAdapter().get('/api/docs-json', (req, res) => {
+        res.json(document);
+    });
+    const redocHtml = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Système de Gestion d'Apurement - API Documentation</title>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
+        <style>
+          body {
+            margin: 0;
+            padding: 0;
+          }
+        </style>
+      </head>
+      <body>
+        <redoc 
+          spec-url='/api/docs-json'
+          hide-download-button
+          disable-search
+          theme='{ "colors": { "primary": { "main": "#1976d2" } } }'
+        ></redoc>
+        <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+      </body>
+    </html>
+  `;
+    app.getHttpAdapter().get('/api/redoc', (req, res) => {
+        res.setHeader('Content-Type', 'text/html');
+        res.send(redocHtml);
+    });
+    const port = process.env.PORT || 3000;
+    await app.listen(port);
+    console.log(`\n🚀 Application is running on: http://localhost:${port}`);
+    console.log(`📚 Swagger UI: http://localhost:${port}/api/docs`);
+    console.log(`📖 ReDoc: http://localhost:${port}/api/redoc`);
+    console.log(`📄 OpenAPI JSON: http://localhost:${port}/api/docs-json\n`);
+}
+bootstrap();
+//# sourceMappingURL=main.js.map
