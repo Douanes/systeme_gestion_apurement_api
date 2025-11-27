@@ -7,10 +7,12 @@ import { EscouadeModule } from './escouade/escouade.module';
 import { AgentModule } from './agent/agent.module';
 import { OrdreMissionModule } from './ordre-mission/ordre.module';
 import { StatisticsModule } from './statistique/statistics.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
     PrismaModule,
+    HealthModule,
     RegimeModule,
     BureauSortieModule,
     MaisonTransitModule,

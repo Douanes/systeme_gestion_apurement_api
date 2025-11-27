@@ -54,7 +54,7 @@ EOF
 
 # Check container health
 check_health() {
-    local max_attempts=30
+    local max_attempts=20
     local attempt=0
     
     log "🏥 Checking container health..."
