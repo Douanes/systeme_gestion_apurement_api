@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Configuration
 APP_DIR="/opt/apurement"
-COMPOSE_FILE="$APP_DIR/docker-compose.apurement.yml"
+COMPOSE_FILE="$APP_DIR/docker compose.apurement.yml"
 ENV_FILE="$APP_DIR/.env"
 BACKUP_DIR="$APP_DIR/backups"
 LOG_FILE="$APP_DIR/deployment.log"
@@ -91,7 +91,7 @@ rollback() {
     
     if [ "$PREVIOUS_IMAGE" == "none" ]; then
         warning "No previous deployment found. Starting fresh container with latest..."
-        docker-compose -f "$COMPOSE_FILE" up -d
+        docker compose -f "$COMPOSE_FILE" up -d
         return 0
     fi
     
@@ -105,7 +105,7 @@ rollback() {
     docker rm "$SERVICE_NAME" 2>/dev/null || true
     
     # Start previous version
-    docker-compose -f "$COMPOSE_FILE" up -d
+    docker compose -f "$COMPOSE_FILE" up -d
     
     # Wait and verify
     sleep 10
@@ -145,9 +145,9 @@ main() {
     fi
     
     # Download latest compose file
-    log "📥 Downloading latest docker-compose configuration..."
+    log "📥 Downloading latest docker compose configuration..."
     if [ -n "${GITHUB_REPOSITORY:-}" ]; then
-        curl -fsSL "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/main/docker/docker-compose.apurement.yml" -o "$COMPOSE_FILE" 2>/dev/null || {
+        curl -fsSL "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/main/docker/docker compose.apurement.yml" -o "$COMPOSE_FILE" 2>/dev/null || {
             warning "Could not download compose file, using existing one"
         }
     fi
@@ -230,10 +230,10 @@ main() {
             # Remove old port mapping and add correct one
             docker start "$SERVICE_NAME"
             
-            # Use docker-compose to ensure correct configuration
+            # Use docker compose to ensure correct configuration
             docker stop "$SERVICE_NAME"
             docker rm "$SERVICE_NAME"
-            docker-compose -f "$COMPOSE_FILE" up -d
+            docker compose -f "$COMPOSE_FILE" up -d
             
             log "✅ Traffic switched successfully"
         else
@@ -246,7 +246,7 @@ main() {
         fi
     else
         log "🆕 Creating new container..."
-        docker-compose -f "$COMPOSE_FILE" up -d
+        docker compose -f "$COMPOSE_FILE" up -d
     fi
     
     # Final health check
