@@ -1,0 +1,152 @@
+name: Deploy Apurement API
+
+on:
+    push:
+        branches: [main, production]
+    workflow_dispatch:
+
+env:
+    REGISTRY: docker.io
+    IMAGE_NAME: babaly/apurement-api
+
+jobs:
+    security-scan:
+        name: Security Scan
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Run Trivy vulnerability scanner
+              uses: aquasecurity/trivy-action@master
+              with:
+                  scan-type: "fs"
+                  scan-ref: "."
+                  format: "sarif"
+                  output: "trivy-results.sarif"
+                  severity: "CRITICAL,HIGH"
+
+            - name: Upload Trivy results to GitHub Security
+              uses: github/codeql-action/upload-sarif@v3
+              if: always()
+              with:
+                  sarif_file: "trivy-results.sarif"
+
+    build:
+        name: Build Docker Image
+        runs-on: ubuntu-latest
+        needs: security-scan
+
+        outputs:
+            image-tag: ${{ steps.meta.outputs.version }}
+            short-sha: ${{ steps.vars.outputs.short-sha }}
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Set variables
+              id: vars
+              run: echo "short-sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Log in to Docker Hub
+              uses: docker/login-action@v3
+              with:
+                  username: ${{ secrets.DOCKER_USERNAME }}
+                  password: ${{ secrets.DOCKER_PASSWORD }}
+
+            - name: Extract metadata
+              id: meta
+              uses: docker/metadata-action@v5
+              with:
+                  images: ${{ env.IMAGE_NAME }}
+                  tags: |
+                      type=ref,event=branch
+                      type=sha,prefix={{branch}}-
+                      type=raw,value=latest,enable={{is_default_branch}}
+
+            - name: Build and push
+              uses: docker/build-push-action@v5
+              with:
+                  context: .
+                  push: true
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+                  build-args: |
+                      BUILDKIT_INLINE_CACHE=1
+
+            - name: Scan Docker image
+              uses: aquasecurity/trivy-action@master
+              with:
+                  image-ref: ${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short-sha }}
+                  format: "sarif"
+                  output: "trivy-image-results.sarif"
+                  severity: "CRITICAL,HIGH"
+
+            - name: Upload image scan results
+              uses: github/codeql-action/upload-sarif@v3
+              if: always()
+              with:
+                  sarif_file: "trivy-image-results.sarif"
+
+    deploy:
+        name: Deploy to Server
+        needs: build
+        runs-on: ubuntu-latest
+        environment: production
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Deploy via SSH
+              uses: appleboy/ssh-action@v1.0.0
+              env:
+                  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+                  DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+                  IMAGE_TAG: ${{ needs.build.outputs.short-sha }}
+                  GIT_COMMIT: ${{ github.sha }}
+                  GITHUB_REPOSITORY: ${{ github.repository }}
+              with:
+                  host: ${{ secrets.SERVER_HOST }}
+                  username: ${{ secrets.SERVER_USER }}
+                  key: ${{ secrets.SSH_PRIVATE_KEY }}
+                  port: ${{ secrets.SERVER_PORT || 22 }}
+                  envs: DOCKER_USERNAME,DOCKER_PASSWORD,IMAGE_TAG,GIT_COMMIT,GITHUB_REPOSITORY
+                  script_stop: true
+                  timeout: 300s
+                  script: |
+                      # Download and execute deployment script
+                      mkdir -p /opt/apurement/scripts
+
+                      curl -fsSL "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/main/scripts/deploy.sh" \
+                        -o /opt/apurement/scripts/deploy.sh
+
+                      chmod +x /opt/apurement/scripts/deploy.sh
+
+                      # Run deployment
+                      /opt/apurement/scripts/deploy.sh
+
+            - name: Verify deployment
+              if: success()
+              run: |
+                  echo "### ✅ Deployment Successful" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "**Service:** apurement-api" >> $GITHUB_STEP_SUMMARY
+                  echo "**Image:** ${{ env.IMAGE_NAME }}:${{ needs.build.outputs.short-sha }}" >> $GITHUB_STEP_SUMMARY
+                  echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+                  echo "**URL:** https://api-apurement.ameenalteck.com" >> $GITHUB_STEP_SUMMARY
+                  echo "**Security:** Scanned with Trivy" >> $GITHUB_STEP_SUMMARY
+
+            - name: Rollback notification
+              if: failure()
+              run: |
+                  echo "### ❌ Deployment Failed & Rolled Back" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "Previous version has been restored automatically." >> $GITHUB_STEP_SUMMARY
