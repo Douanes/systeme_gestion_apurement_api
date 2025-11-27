@@ -20,7 +20,9 @@ export class HealthController {
     async check(): Promise<HealthCheckResult> {
         return this.health.check([
             // Check Supabase connection
-            () => this.prismaHealth.pingCheck('supabase', this.prisma),
+            () => this.prismaHealth.pingCheck('supabase', this.prisma, {
+                timeout: 10000, // Increase timeout to 1 minute
+            }),
         ]);
     }
 }
