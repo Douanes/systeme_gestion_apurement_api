@@ -187,6 +187,13 @@ main() {
     fi
     
     log "🚀 Starting new container with docker compose..."
+    log "🔍 Environment variables:"
+    log "   - APUREMENT_VERSION=${APUREMENT_VERSION}"
+    log "   - IMAGE_TAG=${IMAGE_TAG:-latest}"
+
+    log "🔍 Docker Compose will use this image:"
+    docker compose -f "$COMPOSE_FILE" config | grep "image:" || true
+    
     docker compose -f "$COMPOSE_FILE" up -d
     
     log "⏳ Waiting for container to initialize..."

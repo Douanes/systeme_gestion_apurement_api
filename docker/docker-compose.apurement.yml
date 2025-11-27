@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   apurement-api:
-    image: babaly/apurement-api:${APUREMENT_VERSION:-latest}
+    image: babaly/apurement-api:${APUREMENT_VERSION}
     container_name: apurement-api
     restart: unless-stopped
     ports:
@@ -34,5 +34,4 @@ services:
 
 networks:
   apurement-network:
-    name: apurement-network
-    driver: bridge
+    external: true
