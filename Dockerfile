@@ -28,6 +28,9 @@ RUN npx prisma generate
 # Build application
 RUN npm run build
 
+# Verify dist folder was created
+RUN ls -la dist/ && echo "✅ Build successful"
+
 # Remove dev dependencies after build
 RUN npm prune --production
 
@@ -53,6 +56,11 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package*.json ./
+
+# Verify files were copied
+RUN ls -la /app/ && \
+    ls -la /app/dist/ && \
+    echo "✅ Files copied successfully"
 
 # Create non-root user
 RUN groupadd -r nodejs --gid=1001 && \
