@@ -1,84 +1,63 @@
 # Build stage
-FROM node:20.18.1-slim AS builder
+FROM node:20.18.1 AS builder
 
 WORKDIR /app
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y \
-    python3 \
-    make \
-    g++ \
-    openssl \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+# Configure npm
+RUN npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm config set fetch-retries 10
 
-# Copy dependency files
+# Copy package files
 COPY package*.json ./
+COPY nest-cli.json ./
+COPY tsconfig*.json ./
 COPY prisma ./prisma/
 
-# Install ALL dependencies (including devDependencies for build)
-RUN npm ci
+# Install dependencies
+RUN npm install --legacy-peer-deps
 
-# Copy source code
+# Copy all source code
 COPY . .
 
-# Generate Prisma Client
-RUN npx prisma generate
-
-# Build application
+# Build
 RUN npm run build
 
-# Verify dist folder was created
-RUN ls -la dist/ && echo "✅ Build successful"
+# Verify build output
+RUN ls -la dist/src/ && test -f dist/src/main.js
 
-# Remove dev dependencies after build
-RUN npm prune --production
-
-# ============================================
-# Production Stage - Secure Debian Slim
-# ============================================
+# Production stage
 FROM node:20.18.1-slim
 
 WORKDIR /app
 
-# Install runtime dependencies and security updates
+# Install runtime dependencies
 RUN apt-get update && apt-get install -y \
     dumb-init \
     curl \
-    ca-certificates \
     openssl \
-    && apt-get upgrade -y \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy built application from builder
-COPY --from=builder /app/node_modules ./node_modules
+# Copy from builder
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
-
-# Verify files were copied
-RUN ls -la /app/ && \
-    ls -la /app/dist/ && \
-    echo "✅ Files copied successfully"
+COPY --from=builder /app/prisma ./prisma
 
 # Create non-root user
 RUN groupadd -r nodejs --gid=1001 && \
-    useradd -r -g nodejs --uid=1001 --create-home --shell /bin/bash nestjs && \
-    chown -R nestjs:nodejs /app
+    useradd -r -g nodejs --uid=1001 nodejs && \
+    chown -R nodejs:nodejs /app
 
-# Switch to non-root user
-USER nestjs
+USER nodejs
 
-# Expose application port
+ENV NODE_ENV=production
+ENV PORT=3000
+
 EXPOSE 3000
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:3000/health || exit 1
 
-# Use dumb-init for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
-
-# Start application
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]
