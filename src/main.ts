@@ -40,11 +40,11 @@ async function bootstrap() {
       'JWT-auth',
     )
     .addServer('http://localhost:3000', 'Serveur de développement')
-    .addServer('https://api.example.com', 'Serveur de production')
+    .addServer('https://api-apurement.ameenaltech.com', 'Serveur de production')
     .setContact(
       'Support Technique',
-      'https://example.com',
-      'support@example.com'
+      'https://ameenaltech.com',
+      'support@ameenaltech.com'
     )
     .setLicense('MIT', 'https://opensource.org/licenses/MIT')
     .build();
@@ -86,8 +86,17 @@ async function bootstrap() {
         <redoc 
           spec-url='/api/docs-json'
           hide-download-button
-          disable-search
-          theme='{ "colors": { "primary": { "main": "#1976d2" } } }'
+          theme='{ 
+            "colors": { 
+              "primary": { 
+                "main": "#1976d2" 
+              } 
+            },
+            "typography": {
+              "fontSize": "14px",
+              "fontFamily": "Roboto, sans-serif"
+            }
+          }'
         ></redoc>
         <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
       </body>
@@ -99,13 +108,24 @@ async function bootstrap() {
     res.send(redocHtml);
   });
 
+  // Redirect root path to ReDoc
+  app.getHttpAdapter().get('/', (req, res) => {
+    res.redirect('/api/redoc');
+  });
+
   const port = process.env.PORT || 3000;
   await app.listen(port);
 
-  console.log(`\n🚀 Application is running on: http://localhost:${port}`);
-  console.log(`📚 Swagger UI: http://localhost:${port}/api/docs`);
-  console.log(`📖 ReDoc: http://localhost:${port}/api/redoc`);
-  console.log(`📄 OpenAPI JSON: http://localhost:${port}/api/docs-json\n`);
+  const isProduction = process.env.NODE_ENV === 'production';
+  const baseUrl = isProduction
+    ? 'https://api-apurement.ameenaltech.com'
+    : `http://localhost:${port}`;
+
+  console.log(`\n🚀 Application is running on: ${baseUrl}`);
+  console.log(`📚 Swagger UI: ${baseUrl}/api/docs`);
+  console.log(`📖 ReDoc: ${baseUrl}/api/redoc`);
+  console.log(`📄 OpenAPI JSON: ${baseUrl}/api/docs-json`);
+  console.log(`🔗 Root (/) redirects to ReDoc\n`);
 }
 
 bootstrap();
