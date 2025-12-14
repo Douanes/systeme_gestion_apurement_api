@@ -21,6 +21,65 @@ export class OrdreMissionService {
     constructor(private readonly prisma: PrismaService) { }
 
     /**
+     * Générer un numéro d'ordre de mission unique
+     * Format: MT-YYYY-NNNNNN (Abréviation Maison Transit - Année - Compteur séquentiel de 6 chiffres)
+     * Si pas de maison transit: OM-YYYY-NNNNNN
+     */
+    private async generateOrderNumber(maisonTransitId?: number): Promise<string> {
+        const currentYear = new Date().getFullYear();
+        let prefix = 'OM'; // Préfixe par défaut si pas de maison transit
+
+        // Si une maison de transit est fournie, récupérer son code
+        if (maisonTransitId) {
+            const maisonTransit = await this.prisma.maisonTransit.findUnique({
+                where: { id: maisonTransitId },
+                select: { code: true },
+            });
+
+            if (maisonTransit && maisonTransit.code) {
+                prefix = maisonTransit.code;
+            }
+        }
+
+        // Construire le préfixe complet (ex: MTD-2025-)
+        const fullPrefix = `${prefix}-${currentYear}-`;
+
+        // Trouver le dernier numéro avec ce préfixe
+        const lastOrder = await this.prisma.ordreMission.findFirst({
+            where: {
+                number: {
+                    startsWith: fullPrefix,
+                },
+            },
+            orderBy: {
+                number: 'desc',
+            },
+            select: {
+                number: true,
+            },
+        });
+
+        let counter = 1;
+
+        // Si un ordre existe déjà avec ce préfixe, extraire le compteur et incrémenter
+        if (lastOrder) {
+            const parts = lastOrder.number.split('-');
+            if (parts.length === 3) {
+                const lastCounter = parseInt(parts[2], 10);
+                if (!isNaN(lastCounter)) {
+                    counter = lastCounter + 1;
+                }
+            }
+        }
+
+        // Formater le compteur sur 6 chiffres (ex: 000001)
+        const counterStr = counter.toString().padStart(6, '0');
+
+        // Retourner le numéro complet (ex: MTD-2025-000001)
+        return `${fullPrefix}${counterStr}`;
+    }
+
+    /**
      * Transform Prisma OrdreMission to OrdreMissionResponseDto
      */
     private toResponseDto(ordreMission: OrdreMission): OrdreMissionResponseDto {
@@ -50,18 +109,25 @@ export class OrdreMissionService {
     async create(
         createOrdreMissionDto: CreateOrdreMissionDto,
     ): Promise<OrdreMissionResponseDto> {
-        // Vérifier l'unicité du numéro
-        const existingOrdre = await this.prisma.ordreMission.findFirst({
-            where: {
-                number: createOrdreMissionDto.number,
-                deletedAt: null,
-            },
-        });
+        // Générer un numéro automatiquement si non fourni
+        let orderNumber = createOrdreMissionDto.number;
 
-        if (existingOrdre) {
-            throw new ConflictException(
-                `Un ordre de mission avec le numéro ${createOrdreMissionDto.number} existe déjà`,
-            );
+        if (!orderNumber) {
+            orderNumber = await this.generateOrderNumber(createOrdreMissionDto.maisonTransitId);
+        } else {
+            // Si un numéro est fourni, vérifier qu'il n'existe pas déjà
+            const existingOrdre = await this.prisma.ordreMission.findFirst({
+                where: {
+                    number: orderNumber,
+                    deletedAt: null,
+                },
+            });
+
+            if (existingOrdre) {
+                throw new ConflictException(
+                    `Un ordre de mission avec le numéro ${orderNumber} existe déjà`,
+                );
+            }
         }
 
         // Utiliser une transaction pour créer tout atomiquement
@@ -69,7 +135,7 @@ export class OrdreMissionService {
             // 1. Créer l'ordre de mission
             const ordre = await tx.ordreMission.create({
                 data: {
-                    number: createOrdreMissionDto.number,
+                    number: orderNumber,
                     destination: createOrdreMissionDto.destination,
                     itineraire: createOrdreMissionDto.itineraire,
                     dateOrdre: createOrdreMissionDto.dateOrdre

@@ -207,13 +207,13 @@ export class CreateNestedVoitureDto {
 }
 
 export class CreateOrdreMissionDto {
-    @ApiProperty({
-        description: 'Numéro d\'ordre (unique)',
-        example: 2024001,
+    @ApiPropertyOptional({
+        description: 'Numéro d\'ordre (unique) - Généré automatiquement si non fourni (Format: MT-YYYY-NNNNNN)',
+        example: 'MTD-2025-000001',
     })
-    @IsInt()
-    @IsNotEmpty({ message: 'Le numéro d\'ordre est requis' })
-    number: number;
+    @IsOptional()
+    @IsString()
+    number?: string;
 
     @ApiPropertyOptional({
         description: 'Destination',
@@ -419,9 +419,9 @@ export class OrdreMissionResponseDto {
 
     @ApiProperty({
         description: 'Numéro d\'ordre unique',
-        example: 2024001,
+        example: 'MTD-2025-000001',
     })
-    number: number;
+    number: string;
 
     @ApiPropertyOptional({
         description: 'Destination',

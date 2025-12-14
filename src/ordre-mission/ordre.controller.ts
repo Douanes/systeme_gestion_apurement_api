@@ -42,7 +42,8 @@ export class OrdreMissionController {
     @ApiOperation({
         summary: 'Créer un nouvel ordre de mission',
         description:
-            'Crée un nouvel ordre de mission avec possibilité d\'associer déclarations, colis, conteneurs, camions et voitures',
+            'Crée un nouvel ordre de mission avec possibilité d\'associer déclarations, colis, conteneurs, camions et voitures. ' +
+            'Le numéro d\'ordre est généré automatiquement si non fourni (Format: MT-YYYY-NNNNNN - Code Maison Transit - Année - Compteur séquentiel).',
     })
     @ApiBody({ type: CreateOrdreMissionDto })
     @ApiResponse({
@@ -81,7 +82,7 @@ export class OrdreMissionController {
                 data: [
                     {
                         id: 1,
-                        number: 2024001,
+                        number: 'MTD-2025-000001',
                         destination: 'Port de Dakar',
                         itineraire: 'Dakar -> Thiès -> Saint-Louis',
                         dateOrdre: '2024-01-15T00:00:00.000Z',
@@ -99,7 +100,7 @@ export class OrdreMissionController {
                     },
                     {
                         id: 2,
-                        number: 2024002,
+                        number: 'OM-2025-000001',
                         destination: 'Aéroport Blaise Diagne',
                         itineraire: 'Dakar -> AIBD',
                         dateOrdre: '2024-01-22T00:00:00.000Z',

@@ -178,7 +178,7 @@ model MaisonTransit {
 
 model OrdreMission {
   id               Int                @id @default(autoincrement())
-  number           Int                @unique @map("number")
+  number           String             @unique @map("number") @db.VarChar(50)
   destination      String?
   itineraire       String?            @db.Text
   dateOrdre        DateTime?          @map("date_ordre")
