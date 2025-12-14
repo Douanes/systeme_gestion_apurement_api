@@ -277,6 +277,14 @@ export class CreateOrdreMissionDto {
     statutApurement?: StatutApurement;
 
     @ApiPropertyOptional({
+        description: 'ID de l\'escouade',
+        example: 1,
+    })
+    @IsOptional()
+    @IsInt()
+    escouadeId?: number;
+
+    @ApiPropertyOptional({
         description: 'ID de l\'agent escorteur',
         example: 1,
     })
@@ -472,6 +480,13 @@ export class OrdreMissionResponseDto {
     statutApurement: StatutApurement;
 
     @ApiPropertyOptional({
+        description: 'ID de l\'escouade',
+        example: 1,
+        nullable: true,
+    })
+    escouadeId?: number | null;
+
+    @ApiPropertyOptional({
         description: 'ID de l\'agent escorteur',
         example: 1,
         nullable: true,
@@ -581,6 +596,19 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
         id: number;
         name: string;
         code: string;
+    } | null;
+
+    @ApiPropertyOptional({
+        description: 'Escouade',
+        nullable: true,
+        example: {
+            id: 1,
+            name: 'Escouade Alpha',
+        },
+    })
+    escouade?: {
+        id: number;
+        name: string;
     } | null;
 
     @ApiPropertyOptional({
