@@ -1149,7 +1149,7 @@ export class StatisticsService {
                 gte: dateDebut,
                 lte: dateFin,
             },
-            itinéraire: {
+            itineraire: {
                 not: null,
             },
         };
@@ -1163,7 +1163,7 @@ export class StatisticsService {
             where,
             select: {
                 id: true,
-                itinéraire: true,
+                itineraire: true,
                 destination: true,
                 conteneurs: {
                     where: { deletedAt: null },
@@ -1185,7 +1185,7 @@ export class StatisticsService {
         let totalTransportsGlobal = 0;
 
         ordres.forEach((ordre) => {
-            const itineraire = ordre.itinéraire || 'Non spécifié';
+            const itineraire = ordre.itineraire || 'Non spécifié';
             const destination = ordre.destination || 'Non spécifiée';
 
             if (!grouped.has(itineraire)) {

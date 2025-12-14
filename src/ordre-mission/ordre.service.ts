@@ -28,7 +28,7 @@ export class OrdreMissionService {
             id: ordreMission.id,
             number: ordreMission.number,
             destination: ordreMission.destination,
-            itinéraire: ordreMission.itinéraire,
+            itineraire: ordreMission.itineraire,
             dateOrdre: ordreMission.dateOrdre,
             depositaireId: ordreMission.depositaireId,
             maisonTransitId: ordreMission.maisonTransitId,
@@ -70,7 +70,7 @@ export class OrdreMissionService {
                 data: {
                     number: createOrdreMissionDto.number,
                     destination: createOrdreMissionDto.destination,
-                    itinéraire: createOrdreMissionDto.itinéraire,
+                    itineraire: createOrdreMissionDto.itineraire,
                     dateOrdre: createOrdreMissionDto.dateOrdre
                         ? new Date(createOrdreMissionDto.dateOrdre)
                         : null,
@@ -190,7 +190,7 @@ export class OrdreMissionService {
         if (search) {
             where.OR = [
                 { destination: { contains: search } },
-                { itinéraire: { contains: search } },
+                { itineraire: { contains: search } },
                 { observations: { contains: search } },
             ];
         }
@@ -316,7 +316,7 @@ export class OrdreMissionService {
             data: {
                 number: updateOrdreMissionDto.number,
                 destination: updateOrdreMissionDto.destination,
-                itinéraire: updateOrdreMissionDto.itinéraire,
+                itineraire: updateOrdreMissionDto.itineraire,
                 dateOrdre: updateOrdreMissionDto.dateOrdre
                     ? new Date(updateOrdreMissionDto.dateOrdre)
                     : undefined,

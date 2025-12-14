@@ -26,6 +26,7 @@ enum StatutOrdreMission {
   EN_COURS
   DEPOSE
   TRAITE
+  COTATION
   REJETE
   ANNULE
 }
@@ -95,6 +96,7 @@ model Escouade {
   escouadeAgents EscouadeAgents[]
   agent          Agent?           @relation(fields: [agentId], references: [id])
   agentId        Int?
+  ordreMissions  OrdreMission[]
 
   @@map("escouades")
 }
@@ -178,13 +180,14 @@ model OrdreMission {
   id               Int                @id @default(autoincrement())
   number           Int                @unique @map("number")
   destination      String?
-  itinéraire      String?            @db.Text
+  itineraire       String?            @db.Text
   dateOrdre        DateTime?          @map("date_ordre")
   depositaireId    Int?               @map("depositaire_id")
   maisonTransitId  Int?               @map("maison_transit_id")
   createdById      Int?               @map("created_by")
   statut           StatutOrdreMission @default(EN_COURS)
   statutApurement  StatutApurement    @default(NON_APURE) @map("statut_apurement")
+  ecouadeId        Int?               @map("escouade_id")
   agentEscorteurId Int?               @map("agent_escorteur_id")
   bureauSortieId   Int?               @map("bureau_sortie_id")
   observations     String?            @db.Text
@@ -197,6 +200,7 @@ model OrdreMission {
   agentEscorteur Agent?         @relation(fields: [agentEscorteurId], references: [id], onDelete: SetNull)
   bureauSortie   BureauSortie?  @relation(fields: [bureauSortieId], references: [id], onDelete: SetNull)
   maisonTransit  MaisonTransit? @relation(fields: [maisonTransitId], references: [id], onDelete: SetNull)
+  ecouade        Escouade?      @relation(fields: [ecouadeId], references: [id], onDelete: SetNull)
   declarations   Declaration[]
   colis          Colis[]
   camions        Camion[]

@@ -230,7 +230,7 @@ export class CreateOrdreMissionDto {
     })
     @IsOptional()
     @IsString()
-    itinéraire?: string;
+    itineraire?: string;
 
     @ApiPropertyOptional({
         description: 'Date de l\'ordre',
@@ -427,7 +427,7 @@ export class OrdreMissionResponseDto {
         example: 'Dakar -> Thiès',
         nullable: true,
     })
-    itinéraire?: string | null;
+    itineraire?: string | null;
 
     @ApiPropertyOptional({
         description: 'Date de l\'ordre',
