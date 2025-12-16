@@ -125,27 +125,19 @@ export class AuthController {
     @ApiOperation({
         summary: 'Renvoyer l\'email de vérification',
         description:
-            'Renvoyer un nouvel email de vérification si le précédent a expiré ou n\'a pas été reçu.',
+            'Renvoyer un nouvel email de vérification si le précédent a expiré ou n\'a pas été reçu. ' +
+            'Pour des raisons de sécurité (OWASP - Prévention de l\'énumération d\'utilisateurs), ' +
+            'cette route retourne toujours un message de succès, que l\'email existe ou non.',
     })
     @ApiBody({ type: ResendVerificationEmailDto })
     @ApiResponse({
         status: HttpStatus.OK,
-        description: 'Email renvoyé avec succès',
+        description: 'Message de succès (retourné dans tous les cas pour éviter l\'énumération d\'utilisateurs)',
         schema: {
             example: {
-                message: 'Un nouvel email de vérification a été envoyé',
+                message: 'Si un compte avec cet email existe et n\'est pas encore vérifié, un email de vérification a été envoyé.',
             },
         },
-    })
-    @ApiResponse({
-        status: HttpStatus.NOT_FOUND,
-        description: 'Aucun compte trouvé avec cet email',
-        type: ErrorResponseDto,
-    })
-    @ApiResponse({
-        status: HttpStatus.BAD_REQUEST,
-        description: 'Email déjà vérifié ou impossible d\'envoyer l\'email',
-        type: ErrorResponseDto,
     })
     async resendVerification(
         @Body() resendDto: ResendVerificationEmailDto,

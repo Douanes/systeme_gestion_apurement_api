@@ -222,18 +222,28 @@ export class AuthService {
 
     /**
      * Renvoyer l'email de vérification
+     *
+     * SECURITY: Retourne toujours le même message pour éviter l'énumération d'utilisateurs (OWASP)
      */
     async resendVerificationEmail(email: string): Promise<{ message: string }> {
         const user = await this.prisma.user.findUnique({
             where: { email },
         });
 
+        // SECURITY: Ne pas révéler si l'email existe ou non
+        // Toujours retourner le même message de succès
+        const genericMessage = 'Si un compte avec cet email existe et n\'est pas encore vérifié, un email de vérification a été envoyé.';
+
+        // Si l'utilisateur n'existe pas, retourner le message générique sans erreur
         if (!user) {
-            throw new NotFoundException('Aucun compte trouvé avec cet email');
+            this.logger.warn(`Tentative de renvoie d'email pour un compte inexistant: ${email}`);
+            return { message: genericMessage };
         }
 
+        // Si l'email est déjà vérifié, retourner le message générique sans erreur
         if (user.emailVerified) {
-            throw new BadRequestException('Cet email est déjà vérifié');
+            this.logger.warn(`Tentative de renvoie d'email pour un compte déjà vérifié: ${email}`);
+            return { message: genericMessage };
         }
 
         // Supprimer les anciens tokens non utilisés
@@ -257,29 +267,28 @@ export class AuthService {
             },
         });
 
-        // Envoyer l'email
+        // Envoyer l'email (ne pas throw d'erreur si échec pour éviter l'énumération)
         try {
             await this.mailService.sendVerificationEmail(
                 user.email,
                 user.username,
                 verificationToken,
             );
+            this.logger.log(`Email de vérification renvoyé à: ${email}`);
         } catch (error) {
             this.logger.error(
-                `Erreur lors de l'envoi de l'email de vérification: ${error.message}`,
+                `Erreur lors de l'envoi de l'email de vérification à ${email}: ${error.message}`,
             );
-            throw new BadRequestException(
-                'Impossible d\'envoyer l\'email de vérification',
-            );
+            // SECURITY: Ne pas révéler l'erreur d'envoi, retourner le message générique
         }
 
-        return {
-            message: 'Un nouvel email de vérification a été envoyé',
-        };
+        return { message: genericMessage };
     }
 
     /**
      * Connexion
+     *
+     * SECURITY: Utilise le même message d'erreur pour tous les cas (OWASP - Prevent User Enumeration)
      */
     async login(dto: LoginDto): Promise<LoginResponseDto> {
         // Trouver l'utilisateur par username ou email
@@ -290,8 +299,14 @@ export class AuthService {
             },
         });
 
+        // SECURITY: Toujours utiliser le même message d'erreur générique
+        const genericErrorMessage = 'Identifiants incorrects';
+
         if (!user) {
-            throw new UnauthorizedException('Identifiants incorrects');
+            // SECURITY: Toujours faire un hash bcrypt même si l'utilisateur n'existe pas
+            // Cela empêche les timing attacks qui pourraient révéler si un utilisateur existe
+            await bcrypt.compare('dummy-password', '$2b$10$dummyHashToPreventTimingAttacks1234567890123456789012');
+            throw new UnauthorizedException(genericErrorMessage);
         }
 
         // Vérifier le mot de passe
@@ -301,14 +316,13 @@ export class AuthService {
         );
 
         if (!isPasswordValid) {
-            throw new UnauthorizedException('Identifiants incorrects');
+            throw new UnauthorizedException(genericErrorMessage);
         }
 
-        // Vérifier que le compte est actif
+        // SECURITY: Vérifier que le compte est actif APRÈS la vérification du mot de passe
+        // pour ne pas révéler qu'un compte existe mais n'est pas actif
         if (!user.isActive) {
-            throw new UnauthorizedException(
-                'Votre compte n\'est pas encore activé. Veuillez vérifier votre email.',
-            );
+            throw new UnauthorizedException(genericErrorMessage);
         }
 
         // Mettre à jour lastLogin
