@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { RegimeModule } from './regime/regime.module';
 import { PrismaModule } from 'prisma/prisma.module';
 import { BureauSortieModule } from './bureau-sortie/office.module';
@@ -8,11 +9,19 @@ import { AgentModule } from './agent/agent.module';
 import { OrdreMissionModule } from './ordre-mission/ordre.module';
 import { StatisticsModule } from './statistique/statistics.module';
 import { HealthModule } from './health/health.module';
+import { AuthModule } from './auth/auth.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
     PrismaModule,
     HealthModule,
+    AuthModule,
+    MailModule,
     RegimeModule,
     BureauSortieModule,
     MaisonTransitModule,
