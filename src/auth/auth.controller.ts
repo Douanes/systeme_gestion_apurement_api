@@ -25,8 +25,10 @@ import {
     ResendVerificationEmailDto,
 } from 'libs/dto/auth';
 import { ErrorResponseDto } from 'libs/dto/global/response.dto';
+import { Public } from './decorators';
 
 @ApiTags('Authentification')
+@Public() // Toutes les routes d'authentification sont publiques
 @Controller('auth')
 export class AuthController {
     constructor(private readonly authService: AuthService) { }
