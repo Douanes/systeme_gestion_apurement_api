@@ -61,12 +61,14 @@ model User {
   lastLogin       DateTime? @map("last_login")
   deletedAt       DateTime? @map("deleted_at")
 
-  declarations        Declaration[]
-  colis               Colis[]
-  maisonTransits      MaisonTransit[]
-  ordreMissions       OrdreMission[]
-  auditLogs           AuditLog[]
-  emailVerifications  EmailVerification[]
+  declarations            Declaration[]
+  colis                   Colis[]
+  maisonTransitsOwned     MaisonTransit[]     @relation("MaisonTransitResponsable") // Garde pour compatibilité avec responsableId
+  maisonTransits          UserMaisonTransit[] // Nouvelle relation Many-to-Many
+  ordreMissions           OrdreMission[]
+  auditLogs               AuditLog[]
+  emailVerifications      EmailVerification[]
+  agent                   Agent?
 
   @@map("users")
 }
@@ -106,6 +108,7 @@ model Escouade {
 
 model Agent {
   id         Int       @id @default(autoincrement())
+  userId     Int?      @unique @map("user_id")
   matricule  String?   @unique
   grade      String?
   firstname  String    @map("first_name")
@@ -118,6 +121,7 @@ model Agent {
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
 
+  user               User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
   bureauAffectation  BureauSortie?    @relation(fields: [officeId], references: [id], onDelete: SetNull)
   declarations       Declaration[]
   escouadesAsChef    Escouade[]       @relation("EscouadeChef")
@@ -171,7 +175,8 @@ model MaisonTransit {
   updatedAt     DateTime  @updatedAt @map("updated_at")
   deletedAt     DateTime? @map("deleted_at")
 
-  responsable   User?          @relation(fields: [responsableId], references: [id])
+  responsable   User?               @relation("MaisonTransitResponsable", fields: [responsableId], references: [id])
+  users         UserMaisonTransit[] // Nouvelle relation Many-to-Many
   depositaires  Depositaire[]
   declarations  Declaration[]
   ordreMissions OrdreMission[]
@@ -361,4 +366,21 @@ model EmailVerification {
   @@index([userId])
   @@index([token])
   @@map("email_verifications")
+}
+
+model UserMaisonTransit {
+  userId          Int
+  maisonTransitId Int
+  role            String?   @db.VarChar(50) // "RESPONSABLE", "STAFF", "MANAGER"
+  assignedAt      DateTime  @default(now()) @map("assigned_at")
+  assignedBy      Int?      @map("assigned_by")
+  deletedAt       DateTime? @map("deleted_at")
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  maisonTransit MaisonTransit @relation(fields: [maisonTransitId], references: [id], onDelete: Cascade)
+
+  @@id([userId, maisonTransitId])
+  @@index([userId])
+  @@index([maisonTransitId])
+  @@map("user_maison_transit")
 }
