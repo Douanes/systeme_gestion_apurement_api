@@ -24,7 +24,6 @@ import { UsersService } from './users.service';
 import {
     CreateSystemUserDto,
     CreateTransitStaffDto,
-    CreateAgentWithUserDto,
     UpdateUserDto,
     UserFilterDto,
     UserResponseDto,
@@ -106,38 +105,6 @@ export class UsersController {
         @CurrentUser('id') currentUserId: number,
     ): Promise<UserResponseDto> {
         return this.usersService.createTransitStaff(createTransitStaffDto, currentUserId);
-    }
-
-    @Post('agent')
-    @HttpCode(HttpStatus.CREATED)
-    @Roles(UserRole.ADMIN, UserRole.SUPERVISEUR)
-    @ApiOperation({
-        summary: 'Créer un agent avec compte utilisateur',
-        description:
-            'Créer un nouvel agent avec son compte utilisateur associé. ' +
-            'Seuls les ADMIN et SUPERVISEUR peuvent créer des agents. ' +
-            'Le compte est activé automatiquement.',
-    })
-    @ApiResponse({
-        status: HttpStatus.CREATED,
-        description: 'Agent créé avec succès',
-        type: UserResponseDto,
-    })
-    @ApiResponse({
-        status: HttpStatus.FORBIDDEN,
-        description: 'Accès refusé - ADMIN ou SUPERVISEUR requis',
-        type: ErrorResponseDto,
-    })
-    @ApiResponse({
-        status: HttpStatus.CONFLICT,
-        description: 'Email, username ou matricule déjà utilisé',
-        type: ErrorResponseDto,
-    })
-    async createAgent(
-        @Body() createAgentDto: CreateAgentWithUserDto,
-        @CurrentUser('id') currentUserId: number,
-    ): Promise<UserResponseDto> {
-        return this.usersService.createAgentWithUser(createAgentDto, currentUserId);
     }
 
     @Get()

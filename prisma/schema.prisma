@@ -48,7 +48,7 @@ model User {
   id              Int       @id @default(autoincrement())
   username        String    @unique @db.VarChar(100)
   email           String    @unique @db.VarChar(255)
-  passwordHash    String    @map("password_hash")
+  passwordHash    String?   @map("password_hash") // Nullable pour permettre activation par token
   firstname       String    @map("first_name")
   lastname        String    @map("last_name")
   phone           String?
@@ -63,11 +63,12 @@ model User {
 
   declarations            Declaration[]
   colis                   Colis[]
-  maisonTransitsOwned     MaisonTransit[]     @relation("MaisonTransitResponsable") // Garde pour compatibilité avec responsableId
-  maisonTransits          UserMaisonTransit[] // Nouvelle relation Many-to-Many
+  maisonTransitsOwned     MaisonTransit[]          @relation("MaisonTransitResponsable") // Garde pour compatibilité avec responsableId
+  maisonTransits          UserMaisonTransit[]      // Nouvelle relation Many-to-Many
   ordreMissions           OrdreMission[]
   auditLogs               AuditLog[]
   emailVerifications      EmailVerification[]
+  activationTokens        AccountActivationToken[] // Tokens d'activation
   agent                   Agent?
 
   @@map("users")
@@ -175,11 +176,12 @@ model MaisonTransit {
   updatedAt     DateTime  @updatedAt @map("updated_at")
   deletedAt     DateTime? @map("deleted_at")
 
-  responsable   User?               @relation("MaisonTransitResponsable", fields: [responsableId], references: [id])
-  users         UserMaisonTransit[] // Nouvelle relation Many-to-Many
-  depositaires  Depositaire[]
-  declarations  Declaration[]
-  ordreMissions OrdreMission[]
+  responsable       User?                     @relation("MaisonTransitResponsable", fields: [responsableId], references: [id])
+  users             UserMaisonTransit[]       // Nouvelle relation Many-to-Many
+  invitations       AccountActivationToken[]  // Invitations pour staff
+  depositaires      Depositaire[]
+  declarations      Declaration[]
+  ordreMissions     OrdreMission[]
 
   @@map("maisons_transits")
 }
@@ -383,4 +385,26 @@ model UserMaisonTransit {
   @@index([userId])
   @@index([maisonTransitId])
   @@map("user_maison_transit")
+}
+
+model AccountActivationToken {
+  id              Int       @id @default(autoincrement())
+  userId          Int?      @map("user_id")
+  email           String    @db.VarChar(255)
+  token           String    @unique @db.VarChar(255)
+  type            String    @db.VarChar(50) // 'AGENT_ACTIVATION', 'MT_INVITATION'
+  expiresAt       DateTime  @map("expires_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  usedAt          DateTime? @map("used_at")
+  maisonTransitId Int?      @map("maison_transit_id")
+  invitedBy       Int?      @map("invited_by")
+  staffRole       String?   @db.VarChar(50) // 'STAFF', 'MANAGER'
+
+  user          User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  maisonTransit MaisonTransit? @relation(fields: [maisonTransitId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@index([email])
+  @@map("account_activation_tokens")
 }

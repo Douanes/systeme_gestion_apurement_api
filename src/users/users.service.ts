@@ -14,7 +14,6 @@ import { ConfigService } from '@nestjs/config';
 import {
     CreateSystemUserDto,
     CreateTransitStaffDto,
-    CreateAgentWithUserDto,
     UpdateUserDto,
     UserFilterDto,
     UserResponseDto,
@@ -221,107 +220,6 @@ export class UsersService {
         );
 
         return this.toResponseDto(result.user);
-    }
-
-    /**
-     * Créer un agent avec compte utilisateur
-     * Seuls les ADMIN et SUPERVISEUR peuvent créer des agents
-     */
-    async createAgentWithUser(
-        dto: CreateAgentWithUserDto,
-        currentUserId: number,
-    ): Promise<UserResponseDto> {
-        const currentUser = await this.prisma.user.findUnique({
-            where: { id: currentUserId },
-        });
-
-        if (!currentUser) {
-            throw new NotFoundException('Utilisateur actuel non trouvé');
-        }
-
-        // Vérifier les permissions
-        if (
-            currentUser.role !== UserRole.ADMIN &&
-            currentUser.role !== UserRole.SUPERVISEUR
-        ) {
-            throw new ForbiddenException(
-                'Seuls les ADMIN et SUPERVISEUR peuvent créer des agents',
-            );
-        }
-
-        // Vérifier que l'email n'existe pas
-        const existingEmail = await this.prisma.user.findUnique({
-            where: { email: dto.email },
-        });
-
-        if (existingEmail) {
-            throw new ConflictException('Un compte avec cet email existe déjà');
-        }
-
-        // Vérifier que le username n'existe pas
-        const existingUsername = await this.prisma.user.findUnique({
-            where: { username: dto.username },
-        });
-
-        if (existingUsername) {
-            throw new ConflictException('Ce nom d\'utilisateur est déjà pris');
-        }
-
-        // Vérifier que le matricule n'existe pas (si fourni)
-        if (dto.matricule) {
-            const existingMatricule = await this.prisma.agent.findUnique({
-                where: { matricule: dto.matricule },
-            });
-
-            if (existingMatricule) {
-                throw new ConflictException('Ce matricule est déjà utilisé');
-            }
-        }
-
-        // Hasher le mot de passe
-        const saltRounds = this.configService.get<number>('BCRYPT_ROUNDS', 10);
-        const passwordHash = await bcrypt.hash(dto.password, saltRounds);
-
-        // Créer l'utilisateur et l'agent dans une transaction
-        const result = await this.prisma.$transaction(async (tx) => {
-            // Créer l'utilisateur
-            const user = await tx.user.create({
-                data: {
-                    username: dto.username,
-                    email: dto.email,
-                    passwordHash,
-                    firstname: dto.firstname,
-                    lastname: dto.lastname,
-                    phone: dto.phone,
-                    role: UserRole.AGENT,
-                    isActive: true,
-                    emailVerified: true,
-                    emailVerifiedAt: new Date(),
-                },
-            });
-
-            // Créer l'agent lié à l'utilisateur
-            await tx.agent.create({
-                data: {
-                    userId: user.id,
-                    matricule: dto.matricule,
-                    grade: dto.grade,
-                    firstname: dto.firstname,
-                    lastname: dto.lastname,
-                    phone: dto.phone,
-                    email: dto.email,
-                    officeId: dto.officeId,
-                },
-            });
-
-            return user;
-        });
-
-        this.logger.log(
-            `Agent créé avec compte utilisateur: ${result.username} par ${currentUser.username}`,
-        );
-
-        return this.toResponseDto(result);
     }
 
     /**

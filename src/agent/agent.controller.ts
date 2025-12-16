@@ -47,22 +47,25 @@ export class AgentController {
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({
         summary: 'Créer un nouvel agent',
-        description: 'Crée un nouvel agent des douanes dans le système',
+        description:
+            'Crée un nouvel agent des douanes dans le système. ' +
+            'Si createUserAccount=true, un compte utilisateur sera créé automatiquement ' +
+            'et lié à l\'agent (username et password requis).',
     })
     @ApiBody({ type: CreateAgentDto })
     @ApiResponse({
         status: HttpStatus.CREATED,
-        description: 'Agent créé avec succès',
+        description: 'Agent créé avec succès (avec ou sans compte utilisateur)',
         type: AgentResponseDto,
     })
     @ApiResponse({
         status: HttpStatus.BAD_REQUEST,
-        description: 'Données invalides',
+        description: 'Données invalides ou champs manquants pour la création du compte utilisateur',
         type: ErrorResponseDto,
     })
     @ApiResponse({
         status: HttpStatus.CONFLICT,
-        description: 'Un agent avec ce matricule ou email existe déjà',
+        description: 'Un agent avec ce matricule/email existe déjà, ou le username est déjà pris',
         type: ErrorResponseDto,
     })
     @ApiResponse({
