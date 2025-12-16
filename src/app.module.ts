@@ -11,6 +11,7 @@ import { StatisticsModule } from './statistique/statistics.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { MailModule } from './mail/mail.module';
     HealthModule,
     AuthModule,
     MailModule,
+    UsersModule,
     RegimeModule,
     BureauSortieModule,
     MaisonTransitModule,
