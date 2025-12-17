@@ -103,6 +103,96 @@ export class UsersService {
     }
 
     /**
+     * Inviter un staff à rejoindre une maison de transit (token-based invitation)
+     * Seuls les ADMIN ou le responsable de la maison de transit peuvent inviter
+     */
+    async inviteStaff(
+        maisonTransitId: number,
+        email: string,
+        staffRole: string,
+        currentUserId: number,
+    ): Promise<{ message: string; invitationToken: string }> {
+        const currentUser = await this.prisma.user.findUnique({
+            where: { id: currentUserId },
+        });
+
+        if (!currentUser) {
+            throw new NotFoundException('Utilisateur actuel non trouvé');
+        }
+
+        // Vérifier que la maison de transit existe
+        const maisonTransit = await this.prisma.maisonTransit.findUnique({
+            where: { id: maisonTransitId },
+        });
+
+        if (!maisonTransit) {
+            throw new NotFoundException('Maison de transit non trouvée');
+        }
+
+        // Vérifier les permissions
+        if (
+            currentUser.role !== UserRole.ADMIN &&
+            maisonTransit.responsableId !== currentUserId
+        ) {
+            throw new ForbiddenException(
+                'Vous n\'avez pas la permission d\'inviter du staff à cette maison de transit',
+            );
+        }
+
+        // Vérifier que l'email n'existe pas déjà
+        const existingUser = await this.prisma.user.findUnique({
+            where: { email },
+        });
+
+        if (existingUser) {
+            throw new ConflictException(
+                'Un compte avec cet email existe déjà. L\'utilisateur doit se connecter ou utiliser un autre email.',
+            );
+        }
+
+        // Générer le token d'invitation (valide 7 jours)
+        const invitationToken = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7);
+
+        // Créer le token d'invitation
+        await this.prisma.accountActivationToken.create({
+            data: {
+                email,
+                token: invitationToken,
+                type: 'MT_INVITATION',
+                expiresAt,
+                maisonTransitId,
+                invitedBy: currentUserId,
+                staffRole: staffRole || 'STAFF',
+            },
+        });
+
+        // Envoyer l'email d'invitation
+        try {
+            await this.mailService.sendMaisonTransitInvitationEmail(
+                email,
+                maisonTransit.name,
+                `${currentUser.firstname} ${currentUser.lastname}`,
+                invitationToken,
+                staffRole || 'STAFF',
+            );
+            this.logger.log(
+                `Invitation envoyée à ${email} pour rejoindre MT ${maisonTransit.name} par ${currentUser.username}`,
+            );
+        } catch (error) {
+            this.logger.error(
+                `Erreur lors de l'envoi de l'email d'invitation: ${error.message}`,
+            );
+        }
+
+        return {
+            message: 'Invitation envoyée avec succès',
+            invitationToken, // Retourné pour debug/testing
+        };
+    }
+
+    /**
      * Créer un staff de maison de transit
      * Seuls les ADMIN ou le responsable de la maison de transit peuvent ajouter du staff
      */

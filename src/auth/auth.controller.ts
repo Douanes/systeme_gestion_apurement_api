@@ -24,6 +24,8 @@ import {
     VerifyEmailResponseDto,
     ResendVerificationEmailDto,
     ActivateAccountDto,
+    InvitationInfoDto,
+    AcceptInvitationDto,
 } from 'libs/dto/auth';
 import { ErrorResponseDto } from 'libs/dto/global/response.dto';
 import { Public } from './decorators';
@@ -178,5 +180,75 @@ export class AuthController {
             activateAccountDto.token,
             activateAccountDto.password,
         );
+    }
+
+    @Get('maison-transit/verify-invitation')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Vérifier un token d\'invitation MT',
+        description:
+            'Vérifie la validité d\'un token d\'invitation pour rejoindre une maison de transit ' +
+            'et retourne les informations de l\'invitation (email, nom MT, rôle, inviteur).',
+    })
+    @ApiQuery({
+        name: 'token',
+        description: 'Token d\'invitation reçu par email',
+        type: String,
+        required: true,
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Informations de l\'invitation',
+        type: InvitationInfoDto,
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        description: 'Token d\'invitation invalide',
+        type: ErrorResponseDto,
+    })
+    @ApiResponse({
+        status: HttpStatus.BAD_REQUEST,
+        description: 'Token déjà utilisé ou expiré',
+        type: ErrorResponseDto,
+    })
+    async verifyInvitation(@Query('token') token: string): Promise<InvitationInfoDto> {
+        return this.authService.verifyInvitationToken(token);
+    }
+
+    @Post('maison-transit/accept-invitation')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Accepter une invitation MT et créer son compte',
+        description:
+            'Permet à un utilisateur invité d\'accepter l\'invitation en créant son compte. ' +
+            'L\'utilisateur choisit son username et son mot de passe. ' +
+            'Le compte est automatiquement activé et lié à la maison de transit. ' +
+            'Un JWT est retourné pour connexion automatique.',
+    })
+    @ApiBody({ type: AcceptInvitationDto })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Invitation acceptée, compte créé avec succès, JWT retourné',
+        type: LoginResponseDto,
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        description: 'Token d\'invitation invalide',
+        type: ErrorResponseDto,
+    })
+    @ApiResponse({
+        status: HttpStatus.BAD_REQUEST,
+        description: 'Token déjà utilisé ou expiré',
+        type: ErrorResponseDto,
+    })
+    @ApiResponse({
+        status: HttpStatus.CONFLICT,
+        description: 'Username ou email déjà utilisé',
+        type: ErrorResponseDto,
+    })
+    async acceptInvitation(
+        @Body() acceptInvitationDto: AcceptInvitationDto,
+    ): Promise<LoginResponseDto> {
+        return this.authService.acceptInvitation(acceptInvitationDto);
     }
 }

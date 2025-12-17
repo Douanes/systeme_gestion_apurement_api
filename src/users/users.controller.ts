@@ -29,6 +29,7 @@ import {
     UserResponseDto,
     PaginatedUsersResponseDto,
 } from 'libs/dto/users';
+import { InviteStaffDto } from 'libs/dto/auth';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles, CurrentUser } from '../auth/decorators';
@@ -74,11 +75,66 @@ export class UsersController {
         return this.usersService.createSystemUser(createSystemUserDto, currentUserId);
     }
 
+    @Post('maison-transit/:id/invite-staff')
+    @HttpCode(HttpStatus.OK)
+    @Roles(UserRole.ADMIN, UserRole.TRANSITAIRE)
+    @ApiOperation({
+        summary: 'Inviter un staff à rejoindre une maison de transit',
+        description:
+            'Envoyer une invitation par email à un nouvel utilisateur pour rejoindre une maison de transit. ' +
+            'Les ADMIN peuvent inviter pour n\'importe quelle MT. ' +
+            'Les TRANSITAIRE ne peuvent inviter que pour leur propre MT. ' +
+            'Un token d\'invitation (valide 7 jours) est envoyé par email. ' +
+            'L\'utilisateur acceptera l\'invitation et créera son propre compte.',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'ID de la maison de transit',
+        type: Number,
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Invitation envoyée avec succès',
+        schema: {
+            example: {
+                message: 'Invitation envoyée avec succès',
+                invitationToken: '1a2b3c4d...',
+            },
+        },
+    })
+    @ApiResponse({
+        status: HttpStatus.FORBIDDEN,
+        description: 'Accès refusé ou maison de transit non autorisée',
+        type: ErrorResponseDto,
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        description: 'Maison de transit non trouvée',
+        type: ErrorResponseDto,
+    })
+    @ApiResponse({
+        status: HttpStatus.CONFLICT,
+        description: 'Un compte avec cet email existe déjà',
+        type: ErrorResponseDto,
+    })
+    async inviteStaff(
+        @Param('id', ParseIntPipe) maisonTransitId: number,
+        @Body() inviteStaffDto: InviteStaffDto,
+        @CurrentUser('id') currentUserId: number,
+    ): Promise<{ message: string; invitationToken: string }> {
+        return this.usersService.inviteStaff(
+            maisonTransitId,
+            inviteStaffDto.email,
+            inviteStaffDto.staffRole || 'STAFF',
+            currentUserId,
+        );
+    }
+
     @Post('transit-staff')
     @HttpCode(HttpStatus.CREATED)
     @Roles(UserRole.ADMIN, UserRole.TRANSITAIRE)
     @ApiOperation({
-        summary: 'Créer un staff de maison de transit',
+        summary: 'Créer un staff de maison de transit (DEPRECATED - utiliser invite-staff)',
         description:
             'Ajouter un nouvel utilisateur à une maison de transit. ' +
             'Les ADMIN peuvent ajouter à n\'importe quelle MT. ' +
