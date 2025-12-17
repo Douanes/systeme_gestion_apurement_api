@@ -100,6 +100,15 @@ export class CreateAgentDto {
     @IsOptional()
     @IsBoolean()
     isActive?: boolean;
+
+    @ApiPropertyOptional({
+        description: 'Créer automatiquement un compte utilisateur et envoyer l\'email d\'activation (par défaut: true)',
+        example: true,
+        default: true,
+    })
+    @IsOptional()
+    @IsBoolean()
+    createUserAccount?: boolean;
 }
 
 export class UpdateAgentDto extends PartialType(CreateAgentDto) { }

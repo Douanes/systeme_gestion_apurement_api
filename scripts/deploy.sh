@@ -190,14 +190,24 @@ main() {
     log "🔍 Environment variables:"
     log "   - APUREMENT_VERSION=${APUREMENT_VERSION}"
     log "   - IMAGE_TAG=${IMAGE_TAG:-latest}"
+    log "   - RUN_MIGRATIONS=true (migrations will run automatically)"
 
     log "🔍 Docker Compose will use this image:"
     docker compose -f "$COMPOSE_FILE" config | grep "image:" || true
-    
+
     docker compose -f "$COMPOSE_FILE" up -d
-    
-    log "⏳ Waiting for container to initialize..."
-    sleep 15
+
+    log "⏳ Waiting for migrations and container to initialize..."
+    log "📋 Following migration logs..."
+
+    # Wait a bit for container to start
+    sleep 5
+
+    # Follow logs to see migration progress
+    timeout 60s docker logs -f "$SERVICE_NAME" 2>&1 | grep -E "(migration|Migration|Prisma|Starting)" || true
+
+    log "⏳ Waiting for service to be fully ready..."
+    sleep 10
     
     if ! check_health; then
         error "Final health check failed"

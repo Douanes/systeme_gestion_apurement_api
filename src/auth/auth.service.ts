@@ -19,6 +19,8 @@ import {
     RegisterResponseDto,
     VerifyEmailResponseDto,
     UserRole,
+    InvitationInfoDto,
+    AcceptInvitationDto,
 } from 'libs/dto/auth';
 
 @Injectable()
@@ -309,6 +311,11 @@ export class AuthService {
             throw new UnauthorizedException(genericErrorMessage);
         }
 
+        // Vérifier que l'utilisateur a un mot de passe (compte activé)
+        if (!user.passwordHash) {
+            throw new UnauthorizedException('Compte non activé. Veuillez vérifier votre email.');
+        }
+
         // Vérifier le mot de passe
         const isPasswordValid = await bcrypt.compare(
             dto.password,
@@ -357,6 +364,270 @@ export class AuthService {
                 role: user.role as UserRole,
                 isActive: user.isActive,
                 emailVerified: user.emailVerified,
+            },
+        };
+    }
+
+    /**
+     * Activer un compte avec un token et définir le mot de passe
+     */
+    async activateAccount(token: string, password: string): Promise<LoginResponseDto> {
+        // Trouver le token d'activation
+        const activationToken = await this.prisma.accountActivationToken.findUnique({
+            where: { token },
+            include: {
+                user: true,
+            },
+        });
+
+        if (!activationToken) {
+            throw new NotFoundException('Token d\'activation invalide ou expiré');
+        }
+
+        // Vérifier que le token n'a pas déjà été utilisé
+        if (activationToken.usedAt) {
+            throw new BadRequestException('Ce token d\'activation a déjà été utilisé');
+        }
+
+        // Vérifier que le token n'a pas expiré
+        if (new Date() > activationToken.expiresAt) {
+            throw new BadRequestException('Ce token d\'activation a expiré');
+        }
+
+        // Vérifier que l'utilisateur existe
+        if (!activationToken.user) {
+            throw new NotFoundException('Utilisateur non trouvé');
+        }
+
+        // Hasher le mot de passe
+        const saltRounds = this.configService.get<number>('BCRYPT_ROUNDS', 10);
+        const passwordHash = await bcrypt.hash(password, saltRounds);
+
+        // Mettre à jour l'utilisateur et marquer le token comme utilisé
+        const user = await this.prisma.$transaction(async (tx) => {
+            // Activer le compte et définir le mot de passe
+            const updatedUser = await tx.user.update({
+                where: { id: activationToken.userId! },
+                data: {
+                    passwordHash,
+                    isActive: true,
+                    emailVerified: true,
+                    emailVerifiedAt: new Date(),
+                },
+            });
+
+            // Marquer le token comme utilisé
+            await tx.accountActivationToken.update({
+                where: { id: activationToken.id },
+                data: { usedAt: new Date() },
+            });
+
+            return updatedUser;
+        });
+
+        this.logger.log(`Compte activé avec succès pour l'utilisateur: ${user.username}`);
+
+        // Générer un JWT pour connexion automatique
+        const expiresIn = this.configService.get<number>('JWT_EXPIRATION_SECONDS', 604800);
+        const payload = {
+            sub: user.id,
+            username: user.username,
+            email: user.email,
+            role: user.role,
+        };
+
+        const accessToken = this.jwtService.sign(payload);
+
+        return {
+            accessToken,
+            tokenType: 'Bearer',
+            expiresIn,
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                firstname: user.firstname,
+                lastname: user.lastname,
+                role: user.role as UserRole,
+                isActive: user.isActive,
+                emailVerified: user.emailVerified,
+            },
+        };
+    }
+
+    /**
+     * Vérifier un token d'invitation et retourner les informations
+     */
+    async verifyInvitationToken(token: string): Promise<InvitationInfoDto> {
+        // Trouver le token d'invitation
+        const invitationToken = await this.prisma.accountActivationToken.findUnique({
+            where: { token },
+            include: {
+                maisonTransit: true,
+                user: {
+                    select: {
+                        firstname: true,
+                        lastname: true,
+                    },
+                },
+            },
+        });
+
+        if (!invitationToken) {
+            throw new NotFoundException('Token d\'invitation invalide');
+        }
+
+        // Vérifier que c'est bien un token d'invitation MT
+        if (invitationToken.type !== 'MT_INVITATION') {
+            throw new BadRequestException('Ce token n\'est pas un token d\'invitation');
+        }
+
+        // Vérifier que le token n'a pas déjà été utilisé
+        if (invitationToken.usedAt) {
+            throw new BadRequestException('Cette invitation a déjà été acceptée');
+        }
+
+        // Vérifier que le token n'a pas expiré
+        if (new Date() > invitationToken.expiresAt) {
+            throw new BadRequestException('Cette invitation a expiré');
+        }
+
+        // Récupérer les informations de l'inviteur
+        const inviter = await this.prisma.user.findUnique({
+            where: { id: invitationToken.invitedBy! },
+            select: {
+                firstname: true,
+                lastname: true,
+            },
+        });
+
+        return {
+            email: invitationToken.email,
+            maisonTransitName: invitationToken.maisonTransit?.name || 'Inconnu',
+            staffRole: invitationToken.staffRole || 'STAFF',
+            invitedBy: inviter ? `${inviter.firstname} ${inviter.lastname}` : 'Inconnu',
+            expiresAt: invitationToken.expiresAt,
+        };
+    }
+
+    /**
+     * Accepter une invitation et créer le compte utilisateur
+     */
+    async acceptInvitation(dto: AcceptInvitationDto): Promise<LoginResponseDto> {
+        // Vérifier le token d'invitation
+        const invitationToken = await this.prisma.accountActivationToken.findUnique({
+            where: { token: dto.token },
+            include: {
+                maisonTransit: true,
+            },
+        });
+
+        if (!invitationToken) {
+            throw new NotFoundException('Token d\'invitation invalide');
+        }
+
+        // Vérifier que c'est bien un token d'invitation MT
+        if (invitationToken.type !== 'MT_INVITATION') {
+            throw new BadRequestException('Ce token n\'est pas un token d\'invitation');
+        }
+
+        // Vérifier que le token n'a pas déjà été utilisé
+        if (invitationToken.usedAt) {
+            throw new BadRequestException('Cette invitation a déjà été acceptée');
+        }
+
+        // Vérifier que le token n'a pas expiré
+        if (new Date() > invitationToken.expiresAt) {
+            throw new BadRequestException('Cette invitation a expiré');
+        }
+
+        // Vérifier que le username n'existe pas déjà
+        const existingUsername = await this.prisma.user.findUnique({
+            where: { username: dto.username },
+        });
+
+        if (existingUsername) {
+            throw new ConflictException('Ce nom d\'utilisateur est déjà pris');
+        }
+
+        // Vérifier que l'email n'existe pas déjà
+        const existingEmail = await this.prisma.user.findUnique({
+            where: { email: invitationToken.email },
+        });
+
+        if (existingEmail) {
+            throw new ConflictException('Un compte avec cet email existe déjà');
+        }
+
+        // Hasher le mot de passe
+        const saltRounds = this.configService.get<number>('BCRYPT_ROUNDS', 10);
+        const passwordHash = await bcrypt.hash(dto.password, saltRounds);
+
+        // Créer l'utilisateur et l'association avec la maison de transit
+        const result = await this.prisma.$transaction(async (tx) => {
+            // Créer l'utilisateur
+            const user = await tx.user.create({
+                data: {
+                    username: dto.username,
+                    email: invitationToken.email,
+                    passwordHash,
+                    firstname: dto.firstname,
+                    lastname: dto.lastname,
+                    phone: dto.phone,
+                    role: UserRole.TRANSITAIRE,
+                    isActive: true, // Activé immédiatement
+                    emailVerified: true, // Email vérifié via l'invitation
+                    emailVerifiedAt: new Date(),
+                },
+            });
+
+            // Créer l'association avec la maison de transit
+            await tx.userMaisonTransit.create({
+                data: {
+                    userId: user.id,
+                    maisonTransitId: invitationToken.maisonTransitId!,
+                    role: invitationToken.staffRole || 'STAFF',
+                    assignedBy: invitationToken.invitedBy!,
+                },
+            });
+
+            // Marquer le token comme utilisé
+            await tx.accountActivationToken.update({
+                where: { id: invitationToken.id },
+                data: { usedAt: new Date() },
+            });
+
+            return user;
+        });
+
+        this.logger.log(
+            `Invitation acceptée: ${result.username} a rejoint MT ${invitationToken.maisonTransit?.name}`,
+        );
+
+        // Générer un JWT pour connexion automatique
+        const expiresIn = this.configService.get<number>('JWT_EXPIRATION_SECONDS', 604800);
+        const payload = {
+            sub: result.id,
+            username: result.username,
+            email: result.email,
+            role: result.role,
+        };
+
+        const accessToken = this.jwtService.sign(payload);
+
+        return {
+            accessToken,
+            tokenType: 'Bearer',
+            expiresIn,
+            user: {
+                id: result.id,
+                username: result.username,
+                email: result.email,
+                firstname: result.firstname,
+                lastname: result.lastname,
+                role: result.role as UserRole,
+                isActive: result.isActive,
+                emailVerified: result.emailVerified,
             },
         };
     }

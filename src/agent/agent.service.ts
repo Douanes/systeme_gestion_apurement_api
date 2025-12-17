@@ -2,6 +2,8 @@ import {
     Injectable,
     NotFoundException,
     ConflictException,
+    BadRequestException,
+    Logger,
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { Agent } from '@prisma/client';
@@ -13,10 +15,18 @@ import {
 } from 'libs/dto/agent/agent.dto';
 import { AgentPaginationQueryDto } from 'libs/dto/agent/pagination.dto';
 import { PaginatedResponseDto } from 'libs/dto/global/response.dto';
+import { UserRole } from 'libs/dto/auth';
+import { MailService } from '../mail/mail.service';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class AgentService {
-    constructor(private readonly prisma: PrismaService) { }
+    private readonly logger = new Logger(AgentService.name);
+
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly mailService: MailService,
+    ) { }
 
     /**
      * Transform Prisma Agent to AgentResponseDto
@@ -39,9 +49,12 @@ export class AgentService {
     }
 
     /**
-     * Créer un nouvel agent
+     * Créer un nouvel agent (avec compte utilisateur et token d'activation)
      */
     async create(createAgentDto: CreateAgentDto): Promise<AgentResponseDto> {
+        // Par défaut, créer un compte utilisateur sauf si explicitement false
+        const shouldCreateUser = createAgentDto.createUserAccount !== false;
+
         // Vérifier si un agent avec le même matricule existe déjà
         if (createAgentDto.matricule) {
             const existingAgent = await this.prisma.agent.findFirst({
@@ -72,6 +85,31 @@ export class AgentService {
             }
         }
 
+        // Si création de compte utilisateur demandée
+        if (shouldCreateUser) {
+            // Email obligatoire pour compte utilisateur
+            if (!createAgentDto.email) {
+                throw new BadRequestException(
+                    'L\'email est requis pour créer un compte utilisateur',
+                );
+            }
+
+            // Vérifier que l'email n'existe pas déjà dans la table User
+            const existingUserEmail = await this.prisma.user.findUnique({
+                where: { email: createAgentDto.email },
+            });
+
+            if (existingUserEmail) {
+                throw new ConflictException(
+                    'Un compte utilisateur avec cet email existe déjà',
+                );
+            }
+
+            // Créer l'agent avec compte utilisateur et token d'activation
+            return this.createAgentWithActivationToken(createAgentDto);
+        }
+
+        // Création d'agent sans compte utilisateur
         const agent = await this.prisma.agent.create({
             data: {
                 matricule: createAgentDto.matricule,
@@ -88,7 +126,141 @@ export class AgentService {
             },
         });
 
+        this.logger.log(`Agent créé sans compte utilisateur: ${agent.firstname} ${agent.lastname}`);
+
         return this.toResponseDto(agent);
+    }
+
+    /**
+     * Créer un agent avec compte utilisateur et token d'activation
+     */
+    private async createAgentWithActivationToken(createAgentDto: CreateAgentDto): Promise<AgentResponseDto> {
+        // Générer un username automatiquement basé sur prénom.nom
+        const username = this.generateUsername(createAgentDto.firstname, createAgentDto.lastname);
+
+        // Vérifier que le username généré n'existe pas
+        const existingUsername = await this.prisma.user.findUnique({
+            where: { username },
+        });
+
+        if (existingUsername) {
+            // Si existe, ajouter un nombre aléatoire
+            const randomSuffix = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
+            const newUsername = `${username}${randomSuffix}`;
+            return this.createAgentWithActivationTokenWithUsername(createAgentDto, newUsername);
+        }
+
+        return this.createAgentWithActivationTokenWithUsername(createAgentDto, username);
+    }
+
+    /**
+     * Créer agent avec username spécifique
+     */
+    private async createAgentWithActivationTokenWithUsername(
+        createAgentDto: CreateAgentDto,
+        username: string,
+    ): Promise<AgentResponseDto> {
+        // Créer l'utilisateur, l'agent et le token dans une transaction
+        const result = await this.prisma.$transaction(async (tx) => {
+            // Créer l'utilisateur sans mot de passe (sera défini lors de l'activation)
+            const user = await tx.user.create({
+                data: {
+                    username,
+                    email: createAgentDto.email!,
+                    // passwordHash omis (null en DB) - sera défini lors de l'activation
+                    firstname: createAgentDto.firstname,
+                    lastname: createAgentDto.lastname,
+                    phone: createAgentDto.phone,
+                    role: UserRole.AGENT,
+                    isActive: false, // Inactif jusqu'à activation
+                    emailVerified: false,
+                },
+            });
+
+            // Créer l'agent lié à l'utilisateur
+            const agent = await tx.agent.create({
+                data: {
+                    userId: user.id,
+                    matricule: createAgentDto.matricule,
+                    grade: createAgentDto.grade,
+                    firstname: createAgentDto.firstname,
+                    lastname: createAgentDto.lastname,
+                    phone: createAgentDto.phone,
+                    email: createAgentDto.email,
+                    affectedAt: createAgentDto.affectedAt
+                        ? new Date(createAgentDto.affectedAt)
+                        : null,
+                    officeId: createAgentDto.officeId,
+                    isActive: createAgentDto.isActive ?? true,
+                },
+            });
+
+            // Générer le token d'activation (valide 48h)
+            const activationToken = this.generateActivationToken();
+            const expiresAt = new Date();
+            expiresAt.setHours(expiresAt.getHours() + 48);
+
+            await tx.accountActivationToken.create({
+                data: {
+                    userId: user.id,
+                    email: createAgentDto.email!,
+                    token: activationToken,
+                    type: 'AGENT_ACTIVATION',
+                    expiresAt,
+                },
+            });
+
+            return { agent, activationToken, username };
+        });
+
+        // Envoyer l'email d'activation (en dehors de la transaction)
+        try {
+            await this.mailService.sendAgentActivationEmail(
+                result.agent.email!,
+                result.agent.firstname,
+                result.agent.lastname,
+                result.activationToken,
+            );
+            this.logger.log(
+                `Email d'activation envoyé à ${result.agent.email} pour l'agent ${result.agent.firstname} ${result.agent.lastname}`,
+            );
+        } catch (error) {
+            this.logger.error(
+                `Erreur lors de l'envoi de l'email d'activation: ${error.message}`,
+            );
+            // Ne pas throw, l'agent est créé même si l'email échoue
+        }
+
+        this.logger.log(
+            `Agent créé avec compte utilisateur (${result.username}) et token d'activation: ${result.agent.firstname} ${result.agent.lastname}`,
+        );
+
+        return this.toResponseDto(result.agent);
+    }
+
+    /**
+     * Générer un username à partir du prénom et nom
+     */
+    private generateUsername(firstname: string, lastname: string): string {
+        // Normaliser: minuscules, sans accents, sans espaces
+        const normalize = (str: string) =>
+            str
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]/g, '');
+
+        const first = normalize(firstname);
+        const last = normalize(lastname);
+
+        return `${first}.${last}`;
+    }
+
+    /**
+     * Générer un token d'activation aléatoire
+     */
+    private generateActivationToken(): string {
+        return crypto.randomBytes(32).toString('hex');
     }
 
     /**
