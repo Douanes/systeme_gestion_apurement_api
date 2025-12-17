@@ -367,6 +367,93 @@ export class AuthService {
     }
 
     /**
+     * Activer un compte avec un token et définir le mot de passe
+     */
+    async activateAccount(token: string, password: string): Promise<LoginResponseDto> {
+        // Trouver le token d'activation
+        const activationToken = await this.prisma.accountActivationToken.findUnique({
+            where: { token },
+            include: {
+                user: true,
+            },
+        });
+
+        if (!activationToken) {
+            throw new NotFoundException('Token d\'activation invalide ou expiré');
+        }
+
+        // Vérifier que le token n'a pas déjà été utilisé
+        if (activationToken.usedAt) {
+            throw new BadRequestException('Ce token d\'activation a déjà été utilisé');
+        }
+
+        // Vérifier que le token n'a pas expiré
+        if (new Date() > activationToken.expiresAt) {
+            throw new BadRequestException('Ce token d\'activation a expiré');
+        }
+
+        // Vérifier que l'utilisateur existe
+        if (!activationToken.user) {
+            throw new NotFoundException('Utilisateur non trouvé');
+        }
+
+        // Hasher le mot de passe
+        const saltRounds = this.configService.get<number>('BCRYPT_ROUNDS', 10);
+        const passwordHash = await bcrypt.hash(password, saltRounds);
+
+        // Mettre à jour l'utilisateur et marquer le token comme utilisé
+        const user = await this.prisma.$transaction(async (tx) => {
+            // Activer le compte et définir le mot de passe
+            const updatedUser = await tx.user.update({
+                where: { id: activationToken.userId! },
+                data: {
+                    passwordHash,
+                    isActive: true,
+                    emailVerified: true,
+                    emailVerifiedAt: new Date(),
+                },
+            });
+
+            // Marquer le token comme utilisé
+            await tx.accountActivationToken.update({
+                where: { id: activationToken.id },
+                data: { usedAt: new Date() },
+            });
+
+            return updatedUser;
+        });
+
+        this.logger.log(`Compte activé avec succès pour l'utilisateur: ${user.username}`);
+
+        // Générer un JWT pour connexion automatique
+        const expiresIn = this.configService.get<number>('JWT_EXPIRATION_SECONDS', 604800);
+        const payload = {
+            sub: user.id,
+            username: user.username,
+            email: user.email,
+            role: user.role,
+        };
+
+        const accessToken = this.jwtService.sign(payload);
+
+        return {
+            accessToken,
+            tokenType: 'Bearer',
+            expiresIn,
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                firstname: user.firstname,
+                lastname: user.lastname,
+                role: user.role as UserRole,
+                isActive: user.isActive,
+                emailVerified: user.emailVerified,
+            },
+        };
+    }
+
+    /**
      * Générer un token de vérification aléatoire
      */
     private generateVerificationToken(): string {

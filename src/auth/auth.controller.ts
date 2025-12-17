@@ -23,6 +23,7 @@ import {
     VerifyEmailDto,
     VerifyEmailResponseDto,
     ResendVerificationEmailDto,
+    ActivateAccountDto,
 } from 'libs/dto/auth';
 import { ErrorResponseDto } from 'libs/dto/global/response.dto';
 import { Public } from './decorators';
@@ -143,5 +144,39 @@ export class AuthController {
         @Body() resendDto: ResendVerificationEmailDto,
     ): Promise<{ message: string }> {
         return this.authService.resendVerificationEmail(resendDto.email);
+    }
+
+    @Post('activate-account')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Activer un compte et définir le mot de passe',
+        description:
+            'Permet à un agent (ou autre utilisateur) d\'activer son compte ' +
+            'en utilisant le token reçu par email et en définissant son mot de passe. ' +
+            'Le compte est automatiquement activé et un JWT est retourné pour connexion automatique.',
+    })
+    @ApiBody({ type: ActivateAccountDto })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Compte activé avec succès, JWT retourné',
+        type: LoginResponseDto,
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        description: 'Token invalide ou expiré',
+        type: ErrorResponseDto,
+    })
+    @ApiResponse({
+        status: HttpStatus.BAD_REQUEST,
+        description: 'Token déjà utilisé ou expiré',
+        type: ErrorResponseDto,
+    })
+    async activateAccount(
+        @Body() activateAccountDto: ActivateAccountDto,
+    ): Promise<LoginResponseDto> {
+        return this.authService.activateAccount(
+            activateAccountDto.token,
+            activateAccountDto.password,
+        );
     }
 }

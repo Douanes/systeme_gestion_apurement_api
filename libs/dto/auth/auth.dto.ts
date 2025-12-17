@@ -293,3 +293,153 @@ export class ResetPasswordDto {
     )
     newPassword: string;
 }
+
+/**
+ * DTO pour activer un compte (agent ou autre) et définir le mot de passe
+ */
+export class ActivateAccountDto {
+    @ApiProperty({
+        description: 'Token d\'activation reçu par email',
+        example: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6',
+    })
+    @IsString()
+    @MinLength(32)
+    token: string;
+
+    @ApiProperty({
+        description: 'Nouveau mot de passe (minimum 8 caractères, doit contenir majuscule, minuscule, chiffre et caractère spécial)',
+        example: 'MonMotDePasse123!',
+        minLength: 8,
+    })
+    @IsString()
+    @MinLength(8, { message: 'Le mot de passe doit contenir au moins 8 caractères' })
+    @Matches(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+        {
+            message: 'Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre et un caractère spécial',
+        },
+    )
+    password: string;
+}
+
+/**
+ * DTO pour inviter un staff à rejoindre une maison de transit
+ */
+export class InviteStaffDto {
+    @ApiProperty({
+        description: 'Email de la personne à inviter',
+        example: 'staff@example.com',
+    })
+    @IsEmail({}, { message: 'Format d\'email invalide' })
+    email: string;
+
+    @ApiPropertyOptional({
+        description: 'Rôle du staff dans la maison de transit',
+        example: 'STAFF',
+        enum: ['STAFF', 'MANAGER'],
+        default: 'STAFF',
+    })
+    @IsOptional()
+    @IsString()
+    staffRole?: string;
+}
+
+/**
+ * DTO pour accepter une invitation MT et créer son compte
+ */
+export class AcceptInvitationDto {
+    @ApiProperty({
+        description: 'Token d\'invitation reçu par email',
+        example: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6',
+    })
+    @IsString()
+    @MinLength(32)
+    token: string;
+
+    @ApiProperty({
+        description: 'Nom d\'utilisateur souhaité',
+        example: 'john.doe',
+        minLength: 3,
+        maxLength: 100,
+    })
+    @IsString()
+    @MinLength(3, { message: 'Le nom d\'utilisateur doit contenir au moins 3 caractères' })
+    @MaxLength(100)
+    username: string;
+
+    @ApiProperty({
+        description: 'Mot de passe (minimum 8 caractères, doit contenir majuscule, minuscule, chiffre et caractère spécial)',
+        example: 'MonMotDePasse123!',
+        minLength: 8,
+    })
+    @IsString()
+    @MinLength(8, { message: 'Le mot de passe doit contenir au moins 8 caractères' })
+    @Matches(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+        {
+            message: 'Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre et un caractère spécial',
+        },
+    )
+    password: string;
+
+    @ApiProperty({
+        description: 'Prénom',
+        example: 'John',
+        minLength: 2,
+    })
+    @IsString()
+    @MinLength(2, { message: 'Le prénom doit contenir au moins 2 caractères' })
+    firstname: string;
+
+    @ApiProperty({
+        description: 'Nom de famille',
+        example: 'Doe',
+        minLength: 2,
+    })
+    @IsString()
+    @MinLength(2, { message: 'Le nom doit contenir au moins 2 caractères' })
+    lastname: string;
+
+    @ApiPropertyOptional({
+        description: 'Numéro de téléphone',
+        example: '+221771234567',
+    })
+    @IsOptional()
+    @IsString()
+    phone?: string;
+}
+
+/**
+ * Réponse après vérification d'un token d'invitation
+ */
+export class InvitationInfoDto {
+    @ApiProperty({
+        description: 'Email associé à l\'invitation',
+        example: 'staff@example.com',
+    })
+    email: string;
+
+    @ApiProperty({
+        description: 'Nom de la maison de transit',
+        example: 'Maison de Transit Dakar',
+    })
+    maisonTransitName: string;
+
+    @ApiProperty({
+        description: 'Rôle dans la maison de transit',
+        example: 'STAFF',
+    })
+    staffRole: string;
+
+    @ApiProperty({
+        description: 'Nom de la personne qui a envoyé l\'invitation',
+        example: 'Admin User',
+    })
+    invitedBy: string;
+
+    @ApiProperty({
+        description: 'Date d\'expiration du token',
+        example: '2024-12-24T12:00:00.000Z',
+    })
+    expiresAt: Date;
+}
