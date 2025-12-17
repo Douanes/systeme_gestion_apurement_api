@@ -15,9 +15,9 @@ import {
 } from 'libs/dto/agent/agent.dto';
 import { AgentPaginationQueryDto } from 'libs/dto/agent/pagination.dto';
 import { PaginatedResponseDto } from 'libs/dto/global/response.dto';
-import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcrypt';
 import { UserRole } from 'libs/dto/auth';
+import { MailService } from '../mail/mail.service';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class AgentService {
@@ -25,7 +25,7 @@ export class AgentService {
 
     constructor(
         private readonly prisma: PrismaService,
-        private readonly configService: ConfigService,
+        private readonly mailService: MailService,
     ) { }
 
     /**
@@ -49,9 +49,12 @@ export class AgentService {
     }
 
     /**
-     * Créer un nouvel agent (avec compte utilisateur optionnel)
+     * Créer un nouvel agent (avec compte utilisateur et token d'activation)
      */
     async create(createAgentDto: CreateAgentDto): Promise<AgentResponseDto> {
+        // Par défaut, créer un compte utilisateur sauf si explicitement false
+        const shouldCreateUser = createAgentDto.createUserAccount !== false;
+
         // Vérifier si un agent avec le même matricule existe déjà
         if (createAgentDto.matricule) {
             const existingAgent = await this.prisma.agent.findFirst({
@@ -83,15 +86,8 @@ export class AgentService {
         }
 
         // Si création de compte utilisateur demandée
-        if (createAgentDto.createUserAccount) {
-            // Validation des champs utilisateur obligatoires
-            if (!createAgentDto.username || !createAgentDto.password) {
-                throw new BadRequestException(
-                    'Le nom d\'utilisateur et le mot de passe sont requis pour créer un compte utilisateur',
-                );
-            }
-
-            // Vérifier email obligatoire pour compte utilisateur
+        if (shouldCreateUser) {
+            // Email obligatoire pour compte utilisateur
             if (!createAgentDto.email) {
                 throw new BadRequestException(
                     'L\'email est requis pour créer un compte utilisateur',
@@ -109,19 +105,8 @@ export class AgentService {
                 );
             }
 
-            // Vérifier que le username n'existe pas déjà
-            const existingUsername = await this.prisma.user.findUnique({
-                where: { username: createAgentDto.username },
-            });
-
-            if (existingUsername) {
-                throw new ConflictException(
-                    'Ce nom d\'utilisateur est déjà pris',
-                );
-            }
-
-            // Créer l'agent avec compte utilisateur dans une transaction
-            return this.createAgentWithUser(createAgentDto);
+            // Créer l'agent avec compte utilisateur et token d'activation
+            return this.createAgentWithActivationToken(createAgentDto);
         }
 
         // Création d'agent sans compte utilisateur
@@ -147,28 +132,48 @@ export class AgentService {
     }
 
     /**
-     * Créer un agent avec compte utilisateur lié
+     * Créer un agent avec compte utilisateur et token d'activation
      */
-    private async createAgentWithUser(createAgentDto: CreateAgentDto): Promise<AgentResponseDto> {
-        // Hasher le mot de passe
-        const saltRounds = this.configService.get<number>('BCRYPT_ROUNDS', 10);
-        const passwordHash = await bcrypt.hash(createAgentDto.password!, saltRounds);
+    private async createAgentWithActivationToken(createAgentDto: CreateAgentDto): Promise<AgentResponseDto> {
+        // Générer un username automatiquement basé sur prénom.nom
+        const username = this.generateUsername(createAgentDto.firstname, createAgentDto.lastname);
 
-        // Créer l'utilisateur et l'agent dans une transaction
+        // Vérifier que le username généré n'existe pas
+        const existingUsername = await this.prisma.user.findUnique({
+            where: { username },
+        });
+
+        if (existingUsername) {
+            // Si existe, ajouter un nombre aléatoire
+            const randomSuffix = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
+            const newUsername = `${username}${randomSuffix}`;
+            return this.createAgentWithActivationTokenWithUsername(createAgentDto, newUsername);
+        }
+
+        return this.createAgentWithActivationTokenWithUsername(createAgentDto, username);
+    }
+
+    /**
+     * Créer agent avec username spécifique
+     */
+    private async createAgentWithActivationTokenWithUsername(
+        createAgentDto: CreateAgentDto,
+        username: string,
+    ): Promise<AgentResponseDto> {
+        // Créer l'utilisateur, l'agent et le token dans une transaction
         const result = await this.prisma.$transaction(async (tx) => {
-            // Créer l'utilisateur avec rôle AGENT (activé automatiquement)
+            // Créer l'utilisateur sans mot de passe (sera défini lors de l'activation)
             const user = await tx.user.create({
                 data: {
-                    username: createAgentDto.username!,
+                    username,
                     email: createAgentDto.email!,
-                    passwordHash,
+                    // passwordHash omis (null en DB) - sera défini lors de l'activation
                     firstname: createAgentDto.firstname,
                     lastname: createAgentDto.lastname,
                     phone: createAgentDto.phone,
                     role: UserRole.AGENT,
-                    isActive: true,
-                    emailVerified: true,
-                    emailVerifiedAt: new Date(),
+                    isActive: false, // Inactif jusqu'à activation
+                    emailVerified: false,
                 },
             });
 
@@ -190,14 +195,72 @@ export class AgentService {
                 },
             });
 
-            return agent;
+            // Générer le token d'activation (valide 48h)
+            const activationToken = this.generateActivationToken();
+            const expiresAt = new Date();
+            expiresAt.setHours(expiresAt.getHours() + 48);
+
+            await tx.accountActivationToken.create({
+                data: {
+                    userId: user.id,
+                    email: createAgentDto.email!,
+                    token: activationToken,
+                    type: 'AGENT_ACTIVATION',
+                    expiresAt,
+                },
+            });
+
+            return { agent, activationToken, username };
         });
 
+        // Envoyer l'email d'activation (en dehors de la transaction)
+        try {
+            await this.mailService.sendAgentActivationEmail(
+                result.agent.email!,
+                result.agent.firstname,
+                result.agent.lastname,
+                result.activationToken,
+            );
+            this.logger.log(
+                `Email d'activation envoyé à ${result.agent.email} pour l'agent ${result.agent.firstname} ${result.agent.lastname}`,
+            );
+        } catch (error) {
+            this.logger.error(
+                `Erreur lors de l'envoi de l'email d'activation: ${error.message}`,
+            );
+            // Ne pas throw, l'agent est créé même si l'email échoue
+        }
+
         this.logger.log(
-            `Agent créé avec compte utilisateur: ${result.firstname} ${result.lastname} (username: ${createAgentDto.username})`,
+            `Agent créé avec compte utilisateur (${result.username}) et token d'activation: ${result.agent.firstname} ${result.agent.lastname}`,
         );
 
-        return this.toResponseDto(result);
+        return this.toResponseDto(result.agent);
+    }
+
+    /**
+     * Générer un username à partir du prénom et nom
+     */
+    private generateUsername(firstname: string, lastname: string): string {
+        // Normaliser: minuscules, sans accents, sans espaces
+        const normalize = (str: string) =>
+            str
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]/g, '');
+
+        const first = normalize(firstname);
+        const last = normalize(lastname);
+
+        return `${first}.${last}`;
+    }
+
+    /**
+     * Générer un token d'activation aléatoire
+     */
+    private generateActivationToken(): string {
+        return crypto.randomBytes(32).toString('hex');
     }
 
     /**

@@ -309,6 +309,11 @@ export class AuthService {
             throw new UnauthorizedException(genericErrorMessage);
         }
 
+        // Vérifier que l'utilisateur a un mot de passe (compte activé)
+        if (!user.passwordHash) {
+            throw new UnauthorizedException('Compte non activé. Veuillez vérifier votre email.');
+        }
+
         // Vérifier le mot de passe
         const isPasswordValid = await bcrypt.compare(
             dto.password,

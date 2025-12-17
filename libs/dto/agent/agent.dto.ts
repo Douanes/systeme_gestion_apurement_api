@@ -9,8 +9,6 @@ import {
     IsDateString,
     MaxLength,
     MinLength,
-    Matches,
-    ValidateIf,
 } from 'class-validator';
 
 export class CreateAgentDto {
@@ -103,40 +101,14 @@ export class CreateAgentDto {
     @IsBoolean()
     isActive?: boolean;
 
-    // Champs optionnels pour la création d'un compte utilisateur
     @ApiPropertyOptional({
-        description: 'Créer un compte utilisateur pour cet agent (si true, username et password sont requis)',
-        example: false,
-        default: false,
+        description: 'Créer automatiquement un compte utilisateur et envoyer l\'email d\'activation (par défaut: true)',
+        example: true,
+        default: true,
     })
     @IsOptional()
     @IsBoolean()
     createUserAccount?: boolean;
-
-    @ApiPropertyOptional({
-        description: 'Nom d\'utilisateur (requis si createUserAccount = true)',
-        example: 'jean.dupont',
-        minLength: 3,
-        maxLength: 100,
-    })
-    @ValidateIf((o) => o.createUserAccount === true)
-    @IsString()
-    @MinLength(3, { message: 'Le nom d\'utilisateur doit contenir au moins 3 caractères' })
-    @MaxLength(100, { message: 'Le nom d\'utilisateur ne peut pas dépasser 100 caractères' })
-    username?: string;
-
-    @ApiPropertyOptional({
-        description: 'Mot de passe (requis si createUserAccount = true). Doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial',
-        example: 'SecureP@ss123',
-        minLength: 8,
-    })
-    @ValidateIf((o) => o.createUserAccount === true)
-    @IsString()
-    @MinLength(8, { message: 'Le mot de passe doit contenir au moins 8 caractères' })
-    @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
-        message: 'Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre et un caractère spécial',
-    })
-    password?: string;
 }
 
 export class UpdateAgentDto extends PartialType(CreateAgentDto) { }
