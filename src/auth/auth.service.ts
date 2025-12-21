@@ -70,7 +70,7 @@ export class AuthService {
         }
 
         // Hasher le mot de passe
-        const saltRounds = this.configService.get<number>('BCRYPT_ROUNDS', 10);
+        const saltRounds = parseInt(this.configService.get<string>('BCRYPT_ROUNDS', '10'), 10);
         const passwordHash = await bcrypt.hash(dto.password, saltRounds);
 
         // Créer l'utilisateur et la maison de transit dans une transaction
@@ -400,7 +400,7 @@ export class AuthService {
         }
 
         // Hasher le mot de passe
-        const saltRounds = this.configService.get<number>('BCRYPT_ROUNDS', 10);
+        const saltRounds = parseInt(this.configService.get<string>('BCRYPT_ROUNDS', '10'), 10);
         const passwordHash = await bcrypt.hash(password, saltRounds);
 
         // Mettre à jour l'utilisateur et marquer le token comme utilisé
@@ -560,7 +560,7 @@ export class AuthService {
         }
 
         // Hasher le mot de passe
-        const saltRounds = this.configService.get<number>('BCRYPT_ROUNDS', 10);
+        const saltRounds = parseInt(this.configService.get<string>('BCRYPT_ROUNDS', '10'), 10);
         const passwordHash = await bcrypt.hash(dto.password, saltRounds);
 
         // Créer l'utilisateur et l'association avec la maison de transit
