@@ -633,6 +633,114 @@ export class AuthService {
     }
 
     /**
+     * Demander la réinitialisation du mot de passe
+     *
+     * SECURITY: Retourne toujours le même message pour éviter l'énumération d'utilisateurs
+     */
+    async forgotPassword(email: string): Promise<{ message: string }> {
+        const genericMessage = 'Si un compte avec cet email existe, un lien de réinitialisation a été envoyé.';
+
+        // Trouver l'utilisateur
+        const user = await this.prisma.user.findUnique({
+            where: { email, deletedAt: null },
+        });
+
+        // SECURITY: Ne pas révéler si l'utilisateur existe
+        if (!user) {
+            this.logger.warn(`Tentative de réinitialisation pour un compte inexistant: ${email}`);
+            return { message: genericMessage };
+        }
+
+        // Supprimer les anciens tokens non utilisés
+        await this.prisma.passwordResetToken.deleteMany({
+            where: {
+                userId: user.id,
+                usedAt: null,
+            },
+        });
+
+        // Créer un nouveau token
+        const resetToken = this.generateVerificationToken();
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 1); // Expire dans 1 heure
+
+        await this.prisma.passwordResetToken.create({
+            data: {
+                userId: user.id,
+                token: resetToken,
+                expiresAt,
+            },
+        });
+
+        // Envoyer l'email (ne pas throw d'erreur si échec pour éviter l'énumération)
+        try {
+            await this.mailService.sendPasswordResetEmail(
+                user.email,
+                user.username,
+                resetToken,
+            );
+            this.logger.log(`Email de réinitialisation envoyé à: ${email}`);
+        } catch (error) {
+            this.logger.error(
+                `Erreur lors de l'envoi de l'email de réinitialisation à ${email}: ${error.message}`,
+            );
+            // SECURITY: Ne pas révéler l'erreur d'envoi
+        }
+
+        return { message: genericMessage };
+    }
+
+    /**
+     * Réinitialiser le mot de passe avec un token
+     */
+    async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+        // Trouver le token
+        const resetToken = await this.prisma.passwordResetToken.findUnique({
+            where: { token },
+            include: { user: true },
+        });
+
+        if (!resetToken) {
+            throw new NotFoundException('Token de réinitialisation invalide ou expiré');
+        }
+
+        // Vérifier que le token n'a pas déjà été utilisé
+        if (resetToken.usedAt) {
+            throw new BadRequestException('Ce token a déjà été utilisé');
+        }
+
+        // Vérifier que le token n'a pas expiré
+        if (new Date() > resetToken.expiresAt) {
+            throw new BadRequestException('Le token de réinitialisation a expiré');
+        }
+
+        // Hasher le nouveau mot de passe
+        const saltRounds = parseInt(this.configService.get<string>('BCRYPT_ROUNDS', '10'), 10);
+        const passwordHash = await bcrypt.hash(newPassword, saltRounds);
+
+        // Mettre à jour le mot de passe et marquer le token comme utilisé
+        await this.prisma.$transaction(async (tx) => {
+            // Mettre à jour le mot de passe
+            await tx.user.update({
+                where: { id: resetToken.userId },
+                data: { passwordHash },
+            });
+
+            // Marquer le token comme utilisé
+            await tx.passwordResetToken.update({
+                where: { id: resetToken.id },
+                data: { usedAt: new Date() },
+            });
+        });
+
+        this.logger.log(`Mot de passe réinitialisé pour l'utilisateur: ${resetToken.user.username}`);
+
+        return {
+            message: 'Mot de passe réinitialisé avec succès. Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.',
+        };
+    }
+
+    /**
      * Générer un token de vérification aléatoire
      */
     private generateVerificationToken(): string {
