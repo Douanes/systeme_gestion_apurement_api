@@ -398,7 +398,7 @@ model AccountActivationToken {
   usedAt          DateTime? @map("used_at")
   maisonTransitId Int?      @map("maison_transit_id")
   invitedBy       Int?      @map("invited_by")
-  staffRole       String?   @db.VarChar(50) // 'STAFF', 'MANAGER'
+  staffRole       String?   @map("staff_role") @db.VarChar(50) // 'STAFF', 'MANAGER'
 
   user          User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
   maisonTransit MaisonTransit? @relation(fields: [maisonTransitId], references: [id], onDelete: Cascade)
