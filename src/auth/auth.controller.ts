@@ -6,6 +6,7 @@ import {
     HttpStatus,
     Get,
     Query,
+    BadRequestException,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -27,6 +28,10 @@ import {
     InvitationInfoDto,
     AcceptInvitationDto,
 } from 'libs/dto/auth';
+import {
+    ForgotPasswordDto,
+    ResetPasswordDto,
+} from 'libs/dto/profile';
 import { ErrorResponseDto } from 'libs/dto/global/response.dto';
 import { Public } from './decorators';
 
@@ -250,5 +255,72 @@ export class AuthController {
         @Body() acceptInvitationDto: AcceptInvitationDto,
     ): Promise<LoginResponseDto> {
         return this.authService.acceptInvitation(acceptInvitationDto);
+    }
+
+    @Post('forgot-password')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Demander la réinitialisation du mot de passe',
+        description:
+            'Envoie un email avec un lien de réinitialisation du mot de passe. ' +
+            'Le lien expire après 1 heure. ' +
+            'Pour des raisons de sécurité, le même message est retourné que l\'email existe ou non.',
+    })
+    @ApiBody({ type: ForgotPasswordDto })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Email de réinitialisation envoyé (si le compte existe)',
+        schema: {
+            example: {
+                message: 'Si un compte avec cet email existe, un lien de réinitialisation a été envoyé.',
+            },
+        },
+    })
+    async forgotPassword(
+        @Body() forgotPasswordDto: ForgotPasswordDto,
+    ): Promise<{ message: string }> {
+        return this.authService.forgotPassword(forgotPasswordDto.email);
+    }
+
+    @Post('reset-password')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Réinitialiser le mot de passe',
+        description:
+            'Réinitialise le mot de passe avec le token reçu par email. ' +
+            'Le token expire après 1 heure et ne peut être utilisé qu\'une seule fois.',
+    })
+    @ApiBody({ type: ResetPasswordDto })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Mot de passe réinitialisé avec succès',
+        schema: {
+            example: {
+                message: 'Mot de passe réinitialisé avec succès. Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.',
+            },
+        },
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        description: 'Token invalide ou expiré',
+        type: ErrorResponseDto,
+    })
+    @ApiResponse({
+        status: HttpStatus.BAD_REQUEST,
+        description: 'Token déjà utilisé ou mots de passe ne correspondent pas',
+        type: ErrorResponseDto,
+    })
+    async resetPassword(
+        @Body() resetPasswordDto: ResetPasswordDto,
+    ): Promise<{ message: string }> {
+        // Vérifier que les mots de passe correspondent
+        if (resetPasswordDto.newPassword !== resetPasswordDto.confirmPassword) {
+            throw new BadRequestException('Les mots de passe ne correspondent pas');
+        }
+
+        return this.authService.resetPassword(
+            resetPasswordDto.token,
+            resetPasswordDto.newPassword,
+        );
     }
 }

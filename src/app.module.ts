@@ -12,6 +12,8 @@ import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
 import { UsersModule } from './users/users.module';
+import { ProfileService } from './profile/profile.service';
+import { ProfileController } from './profile/profile.controller';
 
 @Module({
   imports: [
@@ -32,6 +34,7 @@ import { UsersModule } from './users/users.module';
     OrdreMissionModule,
     StatisticsModule
   ],
-  providers: [],
+  providers: [ProfileService],
+  controllers: [ProfileController],
 })
 export class AppModule { }
