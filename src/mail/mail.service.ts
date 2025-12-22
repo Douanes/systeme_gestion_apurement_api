@@ -15,15 +15,23 @@ export class MailService {
      * Créer le transporteur Nodemailer
      */
     private createTransporter() {
+        const host = this.configService.get<string>('SMTP_HOST', 'smtp.gmail.com');
+        const port = parseInt(this.configService.get<string>('SMTP_PORT', '587'), 10);
+        const secure = this.configService.get<string>('SMTP_SECURE', 'false') === 'true';
+        const user = this.configService.get<string>('SMTP_USER');
+        const pass = this.configService.get<string>('SMTP_PASS');
+
         const mailConfig = {
-            host: this.configService.get<string>('MAIL_HOST', 'smtp.gmail.com'),
-            port: this.configService.get<number>('MAIL_PORT', 587),
-            secure: this.configService.get<boolean>('MAIL_SECURE', false), // true for 465, false for other ports
+            host,
+            port,
+            secure, // true for 465, false for other ports
             auth: {
-                user: this.configService.get<string>('MAIL_USER'),
-                pass: this.configService.get<string>('MAIL_PASSWORD'),
+                user,
+                pass,
             },
         };
+
+        this.logger.log(`Configuration SMTP: host=${host}, port=${port}, secure=${secure}, user=${user ? '***' : 'NOT SET'}, pass=${pass ? '***' : 'NOT SET'}`);
 
         this.transporter = nodemailer.createTransport(mailConfig);
 
@@ -49,7 +57,7 @@ export class MailService {
         const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
 
         const mailOptions = {
-            from: `"${this.configService.get<string>('MAIL_FROM_NAME', 'Système Apurement')}" <${this.configService.get<string>('MAIL_FROM_ADDRESS')}>`,
+            from: this.configService.get<string>('SMTP_FROM', 'noreply@example.com'),
             to,
             subject: 'Vérification de votre adresse email',
             html: this.getVerificationEmailTemplate(username, verificationUrl, verificationToken),
@@ -76,7 +84,7 @@ export class MailService {
         const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
 
         const mailOptions = {
-            from: `"${this.configService.get<string>('MAIL_FROM_NAME', 'Système Apurement')}" <${this.configService.get<string>('MAIL_FROM_ADDRESS')}>`,
+            from: this.configService.get<string>('SMTP_FROM', 'noreply@example.com'),
             to,
             subject: 'Réinitialisation de votre mot de passe',
             html: this.getPasswordResetEmailTemplate(username, resetUrl, resetToken),
@@ -96,7 +104,7 @@ export class MailService {
      */
     async sendWelcomeEmail(to: string, username: string): Promise<void> {
         const mailOptions = {
-            from: `"${this.configService.get<string>('MAIL_FROM_NAME', 'Système Apurement')}" <${this.configService.get<string>('MAIL_FROM_ADDRESS')}>`,
+            from: this.configService.get<string>('SMTP_FROM', 'noreply@example.com'),
             to,
             subject: 'Bienvenue sur le Système de Gestion d\'Apurement',
             html: this.getWelcomeEmailTemplate(username),
