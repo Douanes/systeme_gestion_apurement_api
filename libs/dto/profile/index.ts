@@ -11,6 +11,35 @@ import {
 } from 'class-validator';
 
 /**
+ * DTO pour les informations de la maison de transit (pour les transitaires)
+ */
+export class MaisonTransitInfoDto {
+    @ApiProperty({ example: 1 })
+    id: number;
+
+    @ApiProperty({ example: 'MT-12345678' })
+    code: string;
+
+    @ApiProperty({ example: 'Transport Express SARL' })
+    name: string;
+
+    @ApiProperty({ example: 'Rue 10, Dakar, Sénégal', required: false })
+    address?: string;
+
+    @ApiProperty({ example: '+221771234567', required: false })
+    phone?: string;
+
+    @ApiProperty({ example: 'contact@transportexpress.sn', required: false })
+    email?: string;
+
+    @ApiProperty({ example: 'RESPONSABLE' })
+    userRole: string;
+
+    @ApiProperty({ example: true })
+    isActive: boolean;
+}
+
+/**
  * DTO pour récupérer les informations du profil utilisateur
  */
 export class UserProfileDto {
@@ -46,6 +75,9 @@ export class UserProfileDto {
 
     @ApiProperty({ example: '2024-12-22T10:30:00.000Z', required: false })
     lastLogin?: Date;
+
+    @ApiProperty({ type: MaisonTransitInfoDto, required: false, description: 'Informations de la maison de transit (uniquement pour les transitaires)' })
+    maisonTransit?: MaisonTransitInfoDto;
 }
 
 /**

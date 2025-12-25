@@ -34,13 +34,23 @@ export class ProfileService {
     async getProfile(userId: number): Promise<UserProfileDto> {
         const user = await this.prisma.user.findUnique({
             where: { id: userId, deletedAt: null },
+            include: {
+                maisonTransits: {
+                    include: {
+                        maisonTransit: true,
+                    },
+                    where: {
+                        deletedAt: null,
+                    },
+                },
+            },
         });
 
         if (!user) {
             throw new NotFoundException('Utilisateur non trouvé');
         }
 
-        return {
+        const profile: UserProfileDto = {
             id: user.id,
             username: user.username,
             email: user.email,
@@ -53,6 +63,25 @@ export class ProfileService {
             createdAt: user.createdAt,
             lastLogin: user.lastLogin || undefined,
         };
+
+        // Si l'utilisateur est un transitaire, inclure les informations de sa maison de transit
+        if (user.role === UserRole.TRANSITAIRE && user.maisonTransits && user.maisonTransits.length > 0) {
+            const userMT = user.maisonTransits[0]; // Un transitaire n'a qu'une seule MT
+            const mt = userMT.maisonTransit;
+
+            profile.maisonTransit = {
+                id: mt.id,
+                code: mt.code,
+                name: mt.name,
+                address: mt.address || undefined,
+                phone: mt.phone || undefined,
+                email: mt.email || undefined,
+                userRole: userMT.role || 'MEMBRE',
+                isActive: mt.isActive,
+            };
+        }
+
+        return profile;
     }
 
     /**
