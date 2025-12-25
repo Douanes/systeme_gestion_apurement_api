@@ -76,7 +76,7 @@ export class UsersService {
         }
 
         // Hasher le mot de passe
-        const saltRounds = this.configService.get<number>('BCRYPT_ROUNDS', 10);
+        const saltRounds = parseInt(this.configService.get<string>('BCRYPT_ROUNDS', '10'), 10);
         const passwordHash = await bcrypt.hash(dto.password, saltRounds);
 
         // Créer l'utilisateur (compte activé et email vérifié par défaut pour les admins)
@@ -246,7 +246,7 @@ export class UsersService {
         }
 
         // Hasher le mot de passe
-        const saltRounds = this.configService.get<number>('BCRYPT_ROUNDS', 10);
+        const saltRounds = parseInt(this.configService.get<string>('BCRYPT_ROUNDS', '10'), 10);
         const passwordHash = await bcrypt.hash(dto.password, saltRounds);
 
         // Créer l'utilisateur et l'association avec la maison de transit dans une transaction
