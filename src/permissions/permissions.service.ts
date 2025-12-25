@@ -345,7 +345,7 @@ export class PermissionsService {
     }
 
     // Permissions du rôle
-    const rolePerms = await this.getRolePermissions(user.role);
+    const rolePerms = await this.getRolePermissions(user.role as UserRole);
 
     // Permissions accordées à l'utilisateur
     const grantedUserPerms = await this.prisma.userPermission.findMany({
@@ -377,7 +377,7 @@ export class PermissionsService {
       revokedUserPerms.map((up) => up.permission.name),
     );
 
-    const effectivePermissions = [
+    const effectivePermissions: string[] = [
       ...Array.from(rolePermNames).filter((name) => !revokedNames.has(name)),
       ...Array.from(grantedNames),
     ];
@@ -387,11 +387,11 @@ export class PermissionsService {
       rolePermissions: rolePerms.permissions,
       grantedPermissions: grantedUserPerms
         .map((up) => up.permission)
-        .filter((p) => !p.deletedAt),
+        .filter((p): p is NonNullable<typeof p> => p != null && !p.deletedAt),
       revokedPermissions: revokedUserPerms
         .map((up) => up.permission)
-        .filter((p) => !p.deletedAt),
-      effectivePermissions: [...new Set(effectivePermissions)],
+        .filter((p): p is NonNullable<typeof p> => p != null && !p.deletedAt),
+      effectivePermissions: [...new Set(effectivePermissions)] as string[],
     };
   }
 
