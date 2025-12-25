@@ -13,7 +13,7 @@ import { MaisonTransitRequestsService } from './maison-transit-requests.service'
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../permissions/guards/permissions.guard';
-import { RequirePermissions } from '../permissions/decorators/permissions.decorator';
+import { RequirePermissions } from '../permissions/decorators/require-permissions.decorator';
 import {
     InviteTransitaireDto,
     SubmitMaisonTransitRequestDto,

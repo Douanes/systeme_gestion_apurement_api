@@ -49,18 +49,30 @@ export class CloudinaryService {
         }
 
         // Générer la signature
+        const apiSecret = this.configService.get<string>('CLOUDINARY_API_SECRET');
+        if (!apiSecret) {
+            throw new Error('CLOUDINARY_API_SECRET is not configured');
+        }
+
         const signature = cloudinary.utils.api_sign_request(
             paramsToSign,
-            this.configService.get<string>('CLOUDINARY_API_SECRET'),
+            apiSecret,
         );
 
         this.logger.log('Signature Cloudinary générée pour upload direct');
 
+        const apiKey = this.configService.get<string>('CLOUDINARY_API_KEY');
+        const cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
+
+        if (!apiKey || !cloudName) {
+            throw new Error('Cloudinary credentials are not fully configured');
+        }
+
         return {
             signature,
             timestamp,
-            api_key: this.configService.get<string>('CLOUDINARY_API_KEY'),
-            cloud_name: this.configService.get<string>('CLOUDINARY_CLOUD_NAME'),
+            api_key: apiKey,
+            cloud_name: cloudName,
         };
     }
 
