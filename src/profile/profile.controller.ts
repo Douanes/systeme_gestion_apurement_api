@@ -59,7 +59,7 @@ export class ProfileController {
         type: ErrorResponseDto,
     })
     async getProfile(@Request() req): Promise<UserProfileDto> {
-        return this.profileService.getProfile(req.user.sub);
+        return this.profileService.getProfile(req.user.id);
     }
 
     @Put('me')
@@ -93,7 +93,7 @@ export class ProfileController {
         @Request() req,
         @Body() updateProfileDto: UpdateProfileDto,
     ): Promise<ProfileSuccessDto> {
-        return this.profileService.updateProfile(req.user.sub, updateProfileDto);
+        return this.profileService.updateProfile(req.user.id, updateProfileDto);
     }
 
     @Post('change-password')
@@ -133,7 +133,7 @@ export class ProfileController {
         @Request() req,
         @Body() changePasswordDto: ChangePasswordDto,
     ): Promise<{ message: string }> {
-        return this.profileService.changePassword(req.user.sub, changePasswordDto);
+        return this.profileService.changePassword(req.user.id, changePasswordDto);
     }
 
     @Post('admin/reset-password')
@@ -176,6 +176,6 @@ export class ProfileController {
         @Request() req,
         @Body() adminResetPasswordDto: AdminResetPasswordDto,
     ): Promise<{ message: string; tempPassword?: string }> {
-        return this.profileService.adminResetPassword(req.user.sub, adminResetPasswordDto);
+        return this.profileService.adminResetPassword(req.user.id, adminResetPasswordDto);
     }
 }
