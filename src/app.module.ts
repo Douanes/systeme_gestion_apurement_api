@@ -12,6 +12,7 @@ import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
 import { UsersModule } from './users/users.module';
+import { PermissionsModule } from './permissions/permissions.module';
 import { ProfileService } from './profile/profile.service';
 import { ProfileController } from './profile/profile.controller';
 
@@ -26,6 +27,7 @@ import { ProfileController } from './profile/profile.controller';
     AuthModule,
     MailModule,
     UsersModule,
+    PermissionsModule,
     RegimeModule,
     BureauSortieModule,
     MaisonTransitModule,

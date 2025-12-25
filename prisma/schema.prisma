@@ -71,6 +71,7 @@ model User {
   activationTokens        AccountActivationToken[] // Tokens d'activation
   passwordResetTokens     PasswordResetToken[]     // Tokens de réinitialisation de mot de passe
   agent                   Agent?
+  userPermissions         UserPermission[]         // Permissions personnalisées
 
   @@map("users")
 }
@@ -423,4 +424,62 @@ model PasswordResetToken {
   @@index([userId])
   @@index([token])
   @@map("password_reset_tokens")
+}
+
+model Permission {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique @db.VarChar(100) // Ex: "declarations.create"
+  resource    String    @db.VarChar(50) // Ex: "declarations"
+  action      String    @db.VarChar(50) // Ex: "create", "read", "update", "delete"
+  description String?   @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  rolePermissions RolePermission[]
+  userPermissions UserPermission[]
+
+  @@unique([resource, action])
+  @@index([resource])
+  @@index([name])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           Int       @id @default(autoincrement())
+  role         UserRole
+  permissionId Int       @map("permission_id")
+  granted      Boolean   @default(true) // true = accordé, false = révoqué
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([role, permissionId])
+  @@index([role])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model UserPermission {
+  id           Int       @id @default(autoincrement())
+  userId       Int       @map("user_id")
+  permissionId Int       @map("permission_id")
+  granted      Boolean // true = accordé explicitement, false = révoqué explicitement
+  grantedBy    Int?      @map("granted_by") // ID de l'admin qui a accordé la permission
+  grantedAt    DateTime  @default(now()) @map("granted_at")
+  expiresAt    DateTime? @map("expires_at") // Permission temporaire
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permissionId])
+  @@index([userId])
+  @@index([permissionId])
+  @@index([expiresAt])
+  @@map("user_permissions")
 }
