@@ -352,82 +352,170 @@ const PERMISSION_DETAILS: Record<
 };
 
 /**
- * Seed des permissions
+ * Seed des permissions (Idempotent - Safe pour CI/CD)
  */
 export async function seedPermissions() {
-  console.log('🔐 Seeding permissions...');
+  console.log('🔐 Starting permission seed (idempotent mode)...');
 
-  // Créer toutes les permissions
-  for (const permissionName of ALL_PERMISSIONS) {
-    const details = PERMISSION_DETAILS[permissionName];
+  let permissionsCreated = 0;
+  let permissionsUpdated = 0;
+  let permissionsSkipped = 0;
 
-    if (!details) {
-      console.warn(`⚠️  Détails manquants pour la permission: ${permissionName}`);
-      continue;
-    }
+  try {
+    // Créer toutes les permissions
+    console.log(`📝 Processing ${ALL_PERMISSIONS.length} permissions...`);
 
-    await prisma.permission.upsert({
-      where: { name: permissionName },
-      update: {
-        description: details.description,
-        deletedAt: null,
-      },
-      create: {
-        name: permissionName,
-        resource: details.resource,
-        action: details.action,
-        description: details.description,
-      },
-    });
-  }
+    for (const permissionName of ALL_PERMISSIONS) {
+      const details = PERMISSION_DETAILS[permissionName];
 
-  console.log(`✅ ${ALL_PERMISSIONS.length} permissions créées`);
-
-  // Assigner les permissions aux rôles
-  console.log('🔐 Assigning permissions to roles...');
-
-  for (const [roleName, permissionNames] of Object.entries(
-    DEFAULT_ROLE_PERMISSIONS,
-  )) {
-    const role = roleName as UserRole;
-
-    for (const permissionName of permissionNames) {
-      const permission = await prisma.permission.findUnique({
-        where: { name: permissionName },
-      });
-
-      if (!permission) {
+      if (!details) {
         console.warn(
-          `⚠️  Permission non trouvée: ${permissionName} pour le rôle ${role}`,
+          `⚠️  Skipping permission without details: ${permissionName}`,
         );
+        permissionsSkipped++;
         continue;
       }
 
-      await prisma.rolePermission.upsert({
-        where: {
-          role_permissionId: {
-            role,
-            permissionId: permission.id,
-          },
-        },
-        update: {
-          granted: true,
-          deletedAt: null,
-        },
-        create: {
-          role,
-          permissionId: permission.id,
-          granted: true,
-        },
-      });
+      try {
+        const existing = await prisma.permission.findUnique({
+          where: { name: permissionName },
+        });
+
+        if (existing) {
+          // Update si nécessaire
+          if (
+            existing.description !== details.description ||
+            existing.deletedAt !== null
+          ) {
+            await prisma.permission.update({
+              where: { id: existing.id },
+              data: {
+                description: details.description,
+                resource: details.resource,
+                action: details.action,
+                deletedAt: null,
+              },
+            });
+            permissionsUpdated++;
+          } else {
+            permissionsSkipped++;
+          }
+        } else {
+          // Créer si n'existe pas
+          await prisma.permission.create({
+            data: {
+              name: permissionName,
+              resource: details.resource,
+              action: details.action,
+              description: details.description,
+            },
+          });
+          permissionsCreated++;
+        }
+      } catch (error) {
+        console.error(
+          `❌ Error processing permission ${permissionName}:`,
+          error.message,
+        );
+        // Continue avec les autres permissions même en cas d'erreur
+        continue;
+      }
+    }
+
+    console.log(`✅ Permissions: ${permissionsCreated} created, ${permissionsUpdated} updated, ${permissionsSkipped} skipped`);
+
+    // Assigner les permissions aux rôles
+    console.log('🔐 Assigning permissions to roles...');
+
+    let rolePermissionsCreated = 0;
+    let rolePermissionsUpdated = 0;
+    let rolePermissionsSkipped = 0;
+
+    for (const [roleName, permissionNames] of Object.entries(
+      DEFAULT_ROLE_PERMISSIONS,
+    )) {
+      const role = roleName as UserRole;
+
+      for (const permissionName of permissionNames) {
+        try {
+          const permission = await prisma.permission.findUnique({
+            where: { name: permissionName },
+          });
+
+          if (!permission) {
+            console.warn(
+              `⚠️  Permission not found: ${permissionName} for role ${role}`,
+            );
+            continue;
+          }
+
+          const existing = await prisma.rolePermission.findUnique({
+            where: {
+              role_permissionId: {
+                role,
+                permissionId: permission.id,
+              },
+            },
+          });
+
+          if (existing) {
+            // Update si révoqué ou supprimé
+            if (!existing.granted || existing.deletedAt !== null) {
+              await prisma.rolePermission.update({
+                where: { id: existing.id },
+                data: {
+                  granted: true,
+                  deletedAt: null,
+                },
+              });
+              rolePermissionsUpdated++;
+            } else {
+              rolePermissionsSkipped++;
+            }
+          } else {
+            // Créer si n'existe pas
+            await prisma.rolePermission.create({
+              data: {
+                role,
+                permissionId: permission.id,
+                granted: true,
+              },
+            });
+            rolePermissionsCreated++;
+          }
+        } catch (error) {
+          console.error(
+            `❌ Error assigning permission ${permissionName} to role ${role}:`,
+            error.message,
+          );
+          // Continue avec les autres
+          continue;
+        }
+      }
     }
 
     console.log(
-      `✅ ${permissionNames.length} permissions assignées au rôle ${role}`,
+      `✅ Role permissions: ${rolePermissionsCreated} created, ${rolePermissionsUpdated} updated, ${rolePermissionsSkipped} skipped`,
     );
-  }
 
-  console.log('✅ Permissions seeded successfully');
+    console.log('✅ Permission seed completed successfully');
+
+    return {
+      permissions: {
+        created: permissionsCreated,
+        updated: permissionsUpdated,
+        skipped: permissionsSkipped,
+      },
+      rolePermissions: {
+        created: rolePermissionsCreated,
+        updated: rolePermissionsUpdated,
+        skipped: rolePermissionsSkipped,
+      },
+    };
+  } catch (error) {
+    console.error('❌ Fatal error during permission seed:', error);
+    throw error;
+  }
 }
 
 /**
