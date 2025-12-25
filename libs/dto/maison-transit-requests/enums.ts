@@ -1,0 +1,15 @@
+export enum RequestStatus {
+    EN_ATTENTE = 'EN_ATTENTE',
+    EN_REVISION = 'EN_REVISION',
+    APPROUVE = 'APPROUVE',
+    REJETE = 'REJETE',
+    EXPIRE = 'EXPIRE',
+    ANNULE = 'ANNULE',
+}
+
+export enum DocumentType {
+    REGISTRE_COMMERCE = 'REGISTRE_COMMERCE',
+    NINEA = 'NINEA',
+    CARTE_PROFESSIONNELLE = 'CARTE_PROFESSIONNELLE',
+    AUTRE = 'AUTRE',
+}

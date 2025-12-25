@@ -15,6 +15,8 @@ import { UsersModule } from './users/users.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { ProfileService } from './profile/profile.service';
 import { ProfileController } from './profile/profile.controller';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
+import { MaisonTransitRequestsModule } from './maison-transit-requests/maison-transit-requests.module';
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { ProfileController } from './profile/profile.controller';
     MailModule,
     UsersModule,
     PermissionsModule,
+    CloudinaryModule,
+    MaisonTransitRequestsModule,
     RegimeModule,
     BureauSortieModule,
     MaisonTransitModule,
