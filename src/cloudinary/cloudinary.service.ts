@@ -116,4 +116,11 @@ export class CloudinaryService {
             throw error;
         }
     }
+
+    /**
+     * Récupérer le dossier Cloudinary depuis la configuration
+     */
+    getFolder(): string {
+        return this.configService.get<string>('CLOUDINARY_FOLDER', 'maison-transit-documents');
+    }
 }

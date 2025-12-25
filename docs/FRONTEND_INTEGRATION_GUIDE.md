@@ -78,20 +78,36 @@ Content-Type: application/json
 **Body**:
 ```json
 {
-  "folder": "maison-transit-documents",
-  "public_id": "RC_12345_transport_express"
+  "documentType": "REGISTRE_COMMERCE",
+  "fileName": "RC_Transport_Express.pdf"
 }
 ```
+
+**Types de documents possibles**:
+- `REGISTRE_COMMERCE`
+- `NINEA`
+- `CARTE_PROFESSIONNELLE`
+- `AUTRE`
 
 **Réponse Success (200)**:
 ```json
 {
+  "upload_url": "https://api.cloudinary.com/v1_1/dxyz123abc/auto/upload",
   "signature": "abc123def456...",
   "timestamp": 1703419200,
   "api_key": "123456789012345",
-  "cloud_name": "dxyz123abc"
+  "cloud_name": "dxyz123abc",
+  "public_id": "maison-transit-documents/REGISTRE_COMMERCE_RC_Transport_Express_1703419200123",
+  "folder": "maison-transit-documents"
 }
 ```
+
+**Avantages de cette approche**:
+- ✅ Le backend retourne **l'URL d'upload complète** (pas besoin de la construire côté frontend)
+- ✅ Le backend génère un `public_id` unique automatiquement
+- ✅ Le `folder` vient de la configuration backend (variable d'environnement)
+- ✅ Pas de collision de noms possible
+- ✅ Nommage standardisé et traçable
 
 **Note**: Cette signature est valide pour 10 minutes et permet un upload sécurisé vers Cloudinary.
 
@@ -364,6 +380,121 @@ Content-Type: application/json
 
 ---
 
+## Configuration Cloudinary - Explications importantes
+
+### Différence entre `folder` et `upload_preset`
+
+#### **Upload Preset** (Variable d'environnement)
+- C'est une **configuration créée dans le dashboard Cloudinary**
+- Contient des paramètres réutilisables : dossier par défaut, formats autorisés, taille max, etc.
+- Dans notre cas : `CLOUDINARY_UPLOAD_PRESET=apurement_document`
+- **C'est une configuration globale**, pas spécifique à chaque MT
+
+#### **Folder** (Paramètre de requête)
+- C'est le **chemin du dossier** où le fichier sera stocké dans Cloudinary
+- Fonctionne comme un système de fichiers : `dossier/sous-dossier/fichier`
+- Peut être **global** ou **spécifique par MT**
+
+### Deux approches possibles
+
+#### **Option A : Dossier unique (Recommandé - Plus simple)**
+Tous les documents dans un seul dossier `maison-transit-documents`
+
+```javascript
+// Lors de la demande de signature
+const signatureResponse = await fetch('/maison-transit-requests/upload-signature', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    folder: 'maison-transit-documents'
+  })
+});
+```
+
+**Structure dans Cloudinary:**
+```
+maison-transit-documents/
+  ├── rc_12345.pdf
+  ├── ninea_67890.pdf
+  ├── carte_11111.pdf
+  └── ...
+```
+
+**Avantages:**
+- Simple à gérer
+- Un seul dossier à configurer dans l'upload preset
+- Pas de logique métier dans le frontend
+
+#### **Option B : Sous-dossiers par MT (Plus organisé)**
+Chaque maison de transit a son propre sous-dossier
+
+```javascript
+// Lors de la demande de signature
+const companySlug = 'transport-express'; // Généré depuis companyName
+const signatureResponse = await fetch('/maison-transit-requests/upload-signature', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    folder: `maison-transit-documents/${companySlug}`
+  })
+});
+```
+
+**Structure dans Cloudinary:**
+```
+maison-transit-documents/
+  ├── transport-express/
+  │   ├── rc_12345.pdf
+  │   ├── ninea_67890.pdf
+  │   └── carte_11111.pdf
+  ├── logistics-sarl/
+  │   ├── rc_22222.pdf
+  │   └── ninea_33333.pdf
+  └── ...
+```
+
+**Avantages:**
+- Organisation plus claire
+- Facilite la recherche manuelle dans Cloudinary
+- Meilleure traçabilité
+
+### Configuration recommandée - **Option A implémentée**
+
+Le système utilise **Option A** (dossier unique) avec le dossier géré côté backend :
+
+**Variables d'environnement backend (.env):**
+```env
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+CLOUDINARY_UPLOAD_PRESET=apurement_document
+CLOUDINARY_FOLDER=maison-transit-documents    # ← Nouveau : dossier géré côté backend
+```
+
+**Avantages de cette implémentation:**
+- ✅ Le frontend ne gère **PAS** le folder (pas de hardcoding)
+- ✅ Le backend retourne tout ce dont le frontend a besoin (`upload_url`, `public_id`, `signature`, etc.)
+- ✅ Changement de dossier possible sans toucher au frontend (juste modifier la variable d'environnement)
+- ✅ Sécurité : le frontend ne peut pas uploader dans n'importe quel dossier
+
+**Code frontend simplifié:**
+```typescript
+// Le frontend envoie juste le type et le nom du fichier
+const response = await fetch('/maison-transit-requests/upload-signature', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    documentType: 'REGISTRE_COMMERCE',
+    fileName: file.name
+  })
+});
+
+const { upload_url, signature, timestamp, api_key, public_id } = await response.json();
+// Le backend a généré tout ce qu'il faut, le frontend utilise directement
+```
+
+---
+
 ## Workflow détaillé
 
 ### Étape 1: Invitation (Interface Admin)
@@ -512,17 +643,17 @@ interface ActivationForm {
 ```typescript
 // 1. Fonction pour uploader un fichier
 async function uploadDocument(file: File, documentType: string): Promise<DocumentData> {
-  // 1.1 Obtenir la signature du backend
+  // 1.1 Obtenir la signature et l'URL d'upload du backend
   const signatureResponse = await fetch('/maison-transit-requests/upload-signature', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      folder: 'maison-transit-documents',
-      public_id: `${documentType}_${Date.now()}_${file.name.replace(/\.[^/.]+$/, '')}`
+      documentType: documentType,  // Type du document (REGISTRE_COMMERCE, NINEA, etc.)
+      fileName: file.name          // Nom du fichier original
     })
   });
 
-  const { signature, timestamp, api_key, cloud_name } = await signatureResponse.json();
+  const { upload_url, signature, timestamp, api_key, public_id } = await signatureResponse.json();
 
   // 1.2 Créer FormData pour Cloudinary
   const formData = new FormData();
@@ -530,16 +661,17 @@ async function uploadDocument(file: File, documentType: string): Promise<Documen
   formData.append('api_key', api_key);
   formData.append('timestamp', timestamp.toString());
   formData.append('signature', signature);
-  formData.append('folder', 'maison-transit-documents');
+  formData.append('public_id', public_id);
 
-  // 1.3 Upload direct vers Cloudinary
-  const uploadResponse = await fetch(
-    `https://api.cloudinary.com/v1_1/${cloud_name}/auto/upload`,
-    {
-      method: 'POST',
-      body: formData
-    }
-  );
+  // 1.3 Upload direct vers Cloudinary avec l'URL fournie par le backend
+  const uploadResponse = await fetch(upload_url, {
+    method: 'POST',
+    body: formData
+  });
+
+  if (!uploadResponse.ok) {
+    throw new Error('Erreur lors de l\'upload vers Cloudinary');
+  }
 
   const cloudinaryData = await uploadResponse.json();
 

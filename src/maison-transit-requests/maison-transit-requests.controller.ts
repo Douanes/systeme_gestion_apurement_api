@@ -52,18 +52,46 @@ export class MaisonTransitRequestsController {
      */
     @Post('upload-signature')
     async generateUploadSignature(
-        @Body() body: { folder?: string; public_id?: string },
+        @Body()
+        body: {
+            documentType: 'REGISTRE_COMMERCE' | 'NINEA' | 'CARTE_PROFESSIONNELLE' | 'AUTRE';
+            fileName: string;
+        },
     ): Promise<{
+        upload_url: string;
         signature: string;
         timestamp: number;
         api_key: string;
         cloud_name: string;
+        public_id: string;
+        folder: string;
     }> {
-        return this.cloudinaryService.generateSignature({
-            folder: body.folder || 'maison-transit-documents',
-            public_id: body.public_id,
+        // Récupérer le dossier depuis la config
+        const folder = this.cloudinaryService.getFolder();
+
+        // Générer un public_id unique basé sur timestamp et type de document
+        const timestamp = Date.now();
+        const sanitizedFileName = body.fileName
+            .replace(/\.[^/.]+$/, '') // Enlever l'extension
+            .replace(/[^a-zA-Z0-9-_]/g, '_') // Caractères sûrs uniquement
+            .substring(0, 50); // Limiter la longueur
+
+        const publicId = `${folder}/${body.documentType}_${sanitizedFileName}_${timestamp}`;
+
+        const signatureData = this.cloudinaryService.generateSignature({
+            public_id: publicId,
             upload_preset: 'mt_documents',
         });
+
+        // Retourner l'URL d'upload Cloudinary
+        const uploadUrl = `https://api.cloudinary.com/v1_1/${signatureData.cloud_name}/auto/upload`;
+
+        return {
+            upload_url: uploadUrl,
+            ...signatureData,
+            public_id: publicId,
+            folder,
+        };
     }
 
     /**
