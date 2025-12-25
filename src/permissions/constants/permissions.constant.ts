@@ -1,0 +1,194 @@
+/**
+ * Constantes des permissions du système
+ * Format: RESOURCE_ACTION
+ */
+export const PERMISSIONS = {
+  // Déclarations
+  DECLARATIONS_READ: 'declarations.read',
+  DECLARATIONS_CREATE: 'declarations.create',
+  DECLARATIONS_UPDATE: 'declarations.update',
+  DECLARATIONS_DELETE: 'declarations.delete',
+  DECLARATIONS_APPROVE: 'declarations.approve',
+  DECLARATIONS_REJECT: 'declarations.reject',
+  DECLARATIONS_EXPORT: 'declarations.export',
+
+  // Ordres de Mission
+  ORDRE_MISSIONS_READ: 'ordre-missions.read',
+  ORDRE_MISSIONS_CREATE: 'ordre-missions.create',
+  ORDRE_MISSIONS_UPDATE: 'ordre-missions.update',
+  ORDRE_MISSIONS_DELETE: 'ordre-missions.delete',
+  ORDRE_MISSIONS_ASSIGN: 'ordre-missions.assign',
+  ORDRE_MISSIONS_APPROVE: 'ordre-missions.approve',
+  ORDRE_MISSIONS_EXPORT: 'ordre-missions.export',
+
+  // Utilisateurs
+  USERS_READ: 'users.read',
+  USERS_CREATE: 'users.create',
+  USERS_UPDATE: 'users.update',
+  USERS_DELETE: 'users.delete',
+  USERS_ACTIVATE: 'users.activate',
+  USERS_DEACTIVATE: 'users.deactivate',
+  USERS_RESET_PASSWORD: 'users.reset-password',
+  USERS_MANAGE_PERMISSIONS: 'users.manage-permissions',
+
+  // Agents
+  AGENTS_READ: 'agents.read',
+  AGENTS_CREATE: 'agents.create',
+  AGENTS_UPDATE: 'agents.update',
+  AGENTS_DELETE: 'agents.delete',
+  AGENTS_ASSIGN: 'agents.assign',
+
+  // Maisons de Transit
+  MAISONS_TRANSIT_READ: 'maisons-transit.read',
+  MAISONS_TRANSIT_CREATE: 'maisons-transit.create',
+  MAISONS_TRANSIT_UPDATE: 'maisons-transit.update',
+  MAISONS_TRANSIT_DELETE: 'maisons-transit.delete',
+  MAISONS_TRANSIT_MANAGE_STAFF: 'maisons-transit.manage-staff',
+
+  // Bureaux de Sortie
+  BUREAUX_SORTIES_READ: 'bureaux-sorties.read',
+  BUREAUX_SORTIES_CREATE: 'bureaux-sorties.create',
+  BUREAUX_SORTIES_UPDATE: 'bureaux-sorties.update',
+  BUREAUX_SORTIES_DELETE: 'bureaux-sorties.delete',
+
+  // Escouades
+  ESCOUADES_READ: 'escouades.read',
+  ESCOUADES_CREATE: 'escouades.create',
+  ESCOUADES_UPDATE: 'escouades.update',
+  ESCOUADES_DELETE: 'escouades.delete',
+  ESCOUADES_ASSIGN_AGENTS: 'escouades.assign-agents',
+
+  // Dépositaires
+  DEPOSITAIRES_READ: 'depositaires.read',
+  DEPOSITAIRES_CREATE: 'depositaires.create',
+  DEPOSITAIRES_UPDATE: 'depositaires.update',
+  DEPOSITAIRES_DELETE: 'depositaires.delete',
+
+  // Colis
+  COLIS_READ: 'colis.read',
+  COLIS_CREATE: 'colis.create',
+  COLIS_UPDATE: 'colis.update',
+  COLIS_DELETE: 'colis.delete',
+
+  // Transports (Camions, Conteneurs, Voitures)
+  TRANSPORTS_READ: 'transports.read',
+  TRANSPORTS_CREATE: 'transports.create',
+  TRANSPORTS_UPDATE: 'transports.update',
+  TRANSPORTS_DELETE: 'transports.delete',
+
+  // Audit Logs
+  AUDIT_LOGS_READ: 'audit-logs.read',
+  AUDIT_LOGS_EXPORT: 'audit-logs.export',
+
+  // Permissions
+  PERMISSIONS_READ: 'permissions.read',
+  PERMISSIONS_ASSIGN: 'permissions.assign',
+  PERMISSIONS_REVOKE: 'permissions.revoke',
+
+  // Régimes
+  REGIMES_READ: 'regimes.read',
+  REGIMES_CREATE: 'regimes.create',
+  REGIMES_UPDATE: 'regimes.update',
+  REGIMES_DELETE: 'regimes.delete',
+} as const;
+
+/**
+ * Type des permissions
+ */
+export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
+
+/**
+ * Groupes de permissions par ressource
+ */
+export const PERMISSION_GROUPS = {
+  DECLARATIONS: [
+    PERMISSIONS.DECLARATIONS_READ,
+    PERMISSIONS.DECLARATIONS_CREATE,
+    PERMISSIONS.DECLARATIONS_UPDATE,
+    PERMISSIONS.DECLARATIONS_DELETE,
+    PERMISSIONS.DECLARATIONS_APPROVE,
+    PERMISSIONS.DECLARATIONS_REJECT,
+    PERMISSIONS.DECLARATIONS_EXPORT,
+  ],
+  ORDRE_MISSIONS: [
+    PERMISSIONS.ORDRE_MISSIONS_READ,
+    PERMISSIONS.ORDRE_MISSIONS_CREATE,
+    PERMISSIONS.ORDRE_MISSIONS_UPDATE,
+    PERMISSIONS.ORDRE_MISSIONS_DELETE,
+    PERMISSIONS.ORDRE_MISSIONS_ASSIGN,
+    PERMISSIONS.ORDRE_MISSIONS_APPROVE,
+    PERMISSIONS.ORDRE_MISSIONS_EXPORT,
+  ],
+  USERS: [
+    PERMISSIONS.USERS_READ,
+    PERMISSIONS.USERS_CREATE,
+    PERMISSIONS.USERS_UPDATE,
+    PERMISSIONS.USERS_DELETE,
+    PERMISSIONS.USERS_ACTIVATE,
+    PERMISSIONS.USERS_DEACTIVATE,
+    PERMISSIONS.USERS_RESET_PASSWORD,
+    PERMISSIONS.USERS_MANAGE_PERMISSIONS,
+  ],
+  AGENTS: [
+    PERMISSIONS.AGENTS_READ,
+    PERMISSIONS.AGENTS_CREATE,
+    PERMISSIONS.AGENTS_UPDATE,
+    PERMISSIONS.AGENTS_DELETE,
+    PERMISSIONS.AGENTS_ASSIGN,
+  ],
+  MAISONS_TRANSIT: [
+    PERMISSIONS.MAISONS_TRANSIT_READ,
+    PERMISSIONS.MAISONS_TRANSIT_CREATE,
+    PERMISSIONS.MAISONS_TRANSIT_UPDATE,
+    PERMISSIONS.MAISONS_TRANSIT_DELETE,
+    PERMISSIONS.MAISONS_TRANSIT_MANAGE_STAFF,
+  ],
+  BUREAUX_SORTIES: [
+    PERMISSIONS.BUREAUX_SORTIES_READ,
+    PERMISSIONS.BUREAUX_SORTIES_CREATE,
+    PERMISSIONS.BUREAUX_SORTIES_UPDATE,
+    PERMISSIONS.BUREAUX_SORTIES_DELETE,
+  ],
+  ESCOUADES: [
+    PERMISSIONS.ESCOUADES_READ,
+    PERMISSIONS.ESCOUADES_CREATE,
+    PERMISSIONS.ESCOUADES_UPDATE,
+    PERMISSIONS.ESCOUADES_DELETE,
+    PERMISSIONS.ESCOUADES_ASSIGN_AGENTS,
+  ],
+  DEPOSITAIRES: [
+    PERMISSIONS.DEPOSITAIRES_READ,
+    PERMISSIONS.DEPOSITAIRES_CREATE,
+    PERMISSIONS.DEPOSITAIRES_UPDATE,
+    PERMISSIONS.DEPOSITAIRES_DELETE,
+  ],
+  COLIS: [
+    PERMISSIONS.COLIS_READ,
+    PERMISSIONS.COLIS_CREATE,
+    PERMISSIONS.COLIS_UPDATE,
+    PERMISSIONS.COLIS_DELETE,
+  ],
+  TRANSPORTS: [
+    PERMISSIONS.TRANSPORTS_READ,
+    PERMISSIONS.TRANSPORTS_CREATE,
+    PERMISSIONS.TRANSPORTS_UPDATE,
+    PERMISSIONS.TRANSPORTS_DELETE,
+  ],
+  AUDIT_LOGS: [PERMISSIONS.AUDIT_LOGS_READ, PERMISSIONS.AUDIT_LOGS_EXPORT],
+  PERMISSIONS_MANAGEMENT: [
+    PERMISSIONS.PERMISSIONS_READ,
+    PERMISSIONS.PERMISSIONS_ASSIGN,
+    PERMISSIONS.PERMISSIONS_REVOKE,
+  ],
+  REGIMES: [
+    PERMISSIONS.REGIMES_READ,
+    PERMISSIONS.REGIMES_CREATE,
+    PERMISSIONS.REGIMES_UPDATE,
+    PERMISSIONS.REGIMES_DELETE,
+  ],
+} as const;
+
+/**
+ * Toutes les permissions sous forme de tableau
+ */
+export const ALL_PERMISSIONS = Object.values(PERMISSIONS);
