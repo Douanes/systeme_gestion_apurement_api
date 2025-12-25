@@ -212,7 +212,7 @@ export class PermissionDto {
   action: string;
 
   @ApiPropertyOptional({ example: 'Permet de créer une nouvelle déclaration' })
-  description?: string;
+  description?: string | null;
 
   @ApiProperty()
   createdAt: Date;
