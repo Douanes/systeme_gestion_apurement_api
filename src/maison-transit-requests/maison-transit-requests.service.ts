@@ -282,7 +282,7 @@ export class MaisonTransitRequestsService {
                 if (request.documents.length > 0) {
                     const cloudinaryIds = request.documents
                         .filter((doc) => doc.cloudinaryId)
-                        .map((doc) => doc.cloudinaryId);
+                        .map((doc) => doc.cloudinaryId as string);
                     if (cloudinaryIds.length > 0) {
                         await this.cloudinaryService.deleteFiles(cloudinaryIds);
                     }
