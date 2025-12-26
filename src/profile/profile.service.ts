@@ -43,6 +43,11 @@ export class ProfileService {
                         deletedAt: null,
                     },
                 },
+                maisonTransitsOwned: {
+                    where: {
+                        deletedAt: null,
+                    },
+                },
             },
         });
 
@@ -65,20 +70,38 @@ export class ProfileService {
         };
 
         // Si l'utilisateur est un transitaire, inclure les informations de sa maison de transit
-        if (user.role === UserRole.TRANSITAIRE && user.maisonTransits && user.maisonTransits.length > 0) {
-            const userMT = user.maisonTransits[0]; // Un transitaire n'a qu'une seule MT
-            const mt = userMT.maisonTransit;
+        if (user.role === UserRole.TRANSITAIRE) {
+            // Cas 1: L'utilisateur est dans la table de liaison UserMaisonTransit
+            if (user.maisonTransits && user.maisonTransits.length > 0) {
+                const userMT = user.maisonTransits[0];
+                const mt = userMT.maisonTransit;
 
-            profile.maisonTransit = {
-                id: mt.id,
-                code: mt.code,
-                name: mt.name,
-                address: mt.address || undefined,
-                phone: mt.phone || undefined,
-                email: mt.email || undefined,
-                userRole: userMT.role || 'MEMBRE',
-                isActive: mt.isActive,
-            };
+                profile.maisonTransit = {
+                    id: mt.id,
+                    code: mt.code,
+                    name: mt.name,
+                    address: mt.address || undefined,
+                    phone: mt.phone || undefined,
+                    email: mt.email || undefined,
+                    userRole: userMT.role || 'MEMBRE',
+                    isActive: mt.isActive,
+                };
+            }
+            // Cas 2: L'utilisateur est responsable direct (via responsableId)
+            else if (user.maisonTransitsOwned && user.maisonTransitsOwned.length > 0) {
+                const mt = user.maisonTransitsOwned[0];
+
+                profile.maisonTransit = {
+                    id: mt.id,
+                    code: mt.code,
+                    name: mt.name,
+                    address: mt.address || undefined,
+                    phone: mt.phone || undefined,
+                    email: mt.email || undefined,
+                    userRole: 'RESPONSABLE',
+                    isActive: mt.isActive,
+                };
+            }
         }
 
         return profile;
