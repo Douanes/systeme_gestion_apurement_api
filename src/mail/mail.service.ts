@@ -274,7 +274,7 @@ export class MailService {
         const activationUrl = `${frontendUrl}/activate-account?token=${activationToken}`;
 
         const mailOptions = {
-            from: `"${this.configService.get<string>('MAIL_FROM_NAME')}" <${this.configService.get<string>('MAIL_FROM_ADDRESS')}>`,
+            from: this.configService.get<string>('SMTP_FROM', 'noreply@example.com'),
             to,
             subject: 'Activation de votre compte agent',
             html: this.getAgentActivationEmailTemplate(firstname, lastname, activationUrl, activationToken),
@@ -298,7 +298,7 @@ export class MailService {
         const acceptInvitationUrl = `${frontendUrl}/maison-transit/accept-invitation?token=${invitationToken}`;
 
         const mailOptions = {
-            from: `"${this.configService.get<string>('MAIL_FROM_NAME')}" <${this.configService.get<string>('MAIL_FROM_ADDRESS')}>`,
+            from: this.configService.get<string>('SMTP_FROM', 'noreply@example.com'),
             to,
             subject: `Invitation à rejoindre ${maisonTransitName}`,
             html: this.getMaisonTransitInvitationEmailTemplate(
@@ -465,7 +465,7 @@ export class MailService {
         const submitUrl = `${frontendUrl}/maison-transit/submit-request?token=${invitationToken}`;
 
         const mailOptions = {
-            from: `"${this.configService.get<string>('MAIL_FROM_NAME')}" <${this.configService.get<string>('MAIL_FROM_ADDRESS')}>`,
+            from: this.configService.get<string>('SMTP_FROM', 'noreply@example.com'),
             to,
             subject: 'Invitation à créer votre maison de transit',
             html: this.getTransitaireInvitationTemplate(companyName, invitedBy, submitUrl),
@@ -486,7 +486,7 @@ export class MailService {
         const reviewUrl = `${frontendUrl}/admin/maison-transit-requests`;
 
         const mailOptions = {
-            from: `"${this.configService.get<string>('MAIL_FROM_NAME')}" <${this.configService.get<string>('MAIL_FROM_ADDRESS')}>`,
+            from: this.configService.get<string>('SMTP_FROM', 'noreply@example.com'),
             to,
             subject: `Nouvelle demande de maison de transit - ${companyName}`,
             html: this.getRequestSubmittedNotificationTemplate(companyName, reviewUrl),
@@ -508,7 +508,7 @@ export class MailService {
         const activateUrl = `${frontendUrl}/maison-transit/activate?token=${activationToken}`;
 
         const mailOptions = {
-            from: `"${this.configService.get<string>('MAIL_FROM_NAME')}" <${this.configService.get<string>('MAIL_FROM_ADDRESS')}>`,
+            from: this.configService.get<string>('SMTP_FROM', 'noreply@example.com'),
             to,
             subject: `Demande approuvée - ${companyName}`,
             html: this.getRequestApprovedTemplate(companyName, activateUrl),
@@ -527,7 +527,7 @@ export class MailService {
         rejectionReason: string,
     ): Promise<void> {
         const mailOptions = {
-            from: `"${this.configService.get<string>('MAIL_FROM_NAME')}" <${this.configService.get<string>('MAIL_FROM_ADDRESS')}>`,
+            from: this.configService.get<string>('SMTP_FROM', 'noreply@example.com'),
             to,
             subject: `Demande rejetée - ${companyName}`,
             html: this.getRequestRejectedTemplate(companyName, rejectionReason),
