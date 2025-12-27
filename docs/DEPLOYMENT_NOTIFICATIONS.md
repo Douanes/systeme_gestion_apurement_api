@@ -7,7 +7,7 @@ Ce document explique comment configurer les notifications par email pour le work
 Le workflow de déploiement envoie automatiquement des emails dans deux cas :
 
 ### 1. Déploiement Réussi ✅
-- **Destinataires** : Développeur Frontend ET Développeur Backend
+- **Destinataires** : Développeurs Frontend ET Développeurs Backend (plusieurs emails possibles)
 - **Contenu** :
   - Branche déployée
   - Message du commit
@@ -19,7 +19,7 @@ Le workflow de déploiement envoie automatiquement des emails dans deux cas :
   - Lien vers les logs de déploiement
 
 ### 2. Déploiement Échoué ❌
-- **Destinataires** : Développeur Backend uniquement
+- **Destinataires** : Développeurs Backend uniquement (plusieurs emails possibles)
 - **Contenu** :
   - Branche concernée
   - Message du commit
@@ -37,13 +37,14 @@ Pour activer les notifications, vous devez configurer les secrets suivants dans 
 - `SMTP_HOST` - Serveur SMTP (ex: send.one.com)
 - `SMTP_PORT` - Port SMTP (ex: 465)
 - `SMTP_SECURE` - Utiliser SSL/TLS (ex: true)
-- `SMTP_USER` - Utilisateur SMTP (ex: it@solution-plus.es)
+- `SMTP_USER` - Utilisateur SMTP 
 - `SMTP_PASS` - Mot de passe SMTP
-- `SMTP_FROM` - Adresse d'expéditeur (ex: it@solution-plus.es)
+- `SMTP_FROM` - Adresse d'expéditeur 
 
 ### Nouveaux Secrets à Ajouter
-- `DEV_FRONTEND_EMAIL` - Email du développeur frontend
-- `DEV_BACKEND_EMAIL` - Email du développeur backend
+
+- `DEV_FRONTEND_EMAILS` - Emails des développeurs frontend (séparés par des virgules)
+- `DEV_BACKEND_EMAILS` - Emails des développeurs backend (séparés par des virgules)
 
 ## Comment Ajouter les Secrets
 
@@ -53,17 +54,21 @@ Pour activer les notifications, vous devez configurer les secrets suivants dans 
 4. Cliquez sur **New repository secret**
 5. Ajoutez les secrets suivants :
 
-   **DEV_FRONTEND_EMAIL**
+   **DEV_FRONTEND_EMAILS**
    ```
-   Name: DEV_FRONTEND_EMAIL
-   Value: email-du-dev-frontend@example.com
+   Name: DEV_FRONTEND_EMAILS
+   Value: dev1@example.com,dev2@example.com,dev3@example.com
    ```
 
-   **DEV_BACKEND_EMAIL**
+   *Note: Vous pouvez mettre un seul email ou plusieurs séparés par des virgules (sans espaces)*
+
+   **DEV_BACKEND_EMAILS**
    ```
-   Name: DEV_BACKEND_EMAIL
-   Value: email-du-dev-backend@example.com
+   Name: DEV_BACKEND_EMAILS
+   Value: backend-dev1@example.com,backend-dev2@example.com
    ```
+
+   *Note: Vous pouvez mettre un seul email ou plusieurs séparés par des virgules (sans espaces)*
 
 ## Exemple d'Email de Succès
 

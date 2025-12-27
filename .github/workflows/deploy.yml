@@ -147,7 +147,7 @@ jobs:
                   username: ${{ secrets.SMTP_USER }}
                   password: ${{ secrets.SMTP_PASS }}
                   subject: '✅ Déploiement réussi - Apurement API'
-                  to: ${{ secrets.DEV_FRONTEND_EMAIL }},${{ secrets.DEV_BACKEND_EMAIL }}
+                  to: ${{ secrets.DEV_FRONTEND_EMAILS }},${{ secrets.DEV_BACKEND_EMAILS }}
                   from: ${{ secrets.SMTP_FROM }}
                   html_body: |
                       <!DOCTYPE html>
@@ -246,7 +246,7 @@ jobs:
                   username: ${{ secrets.SMTP_USER }}
                   password: ${{ secrets.SMTP_PASS }}
                   subject: '❌ Échec du déploiement - Apurement API'
-                  to: ${{ secrets.DEV_BACKEND_EMAIL }}
+                  to: ${{ secrets.DEV_BACKEND_EMAILS }}
                   from: ${{ secrets.SMTP_FROM }}
                   html_body: |
                       <!DOCTYPE html>
