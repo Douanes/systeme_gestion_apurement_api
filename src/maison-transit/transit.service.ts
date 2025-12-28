@@ -222,32 +222,51 @@ export class MaisonTransitService {
      * Supprimer une maison de transit (soft delete)
      */
     async remove(id: number): Promise<void> {
-        // Vérifier si la maison de transit existe
-        await this.findOne(id);
+        // Vérifier si la maison de transit existe (sans filtre deletedAt)
+        const maisonTransit = await this.prisma.maisonTransit.findUnique({
+            where: { id },
+        });
 
-        // Vérifier s'il y a des relations actives
-        const relationsCount = await this.prisma.maisonTransit.findUnique({
+        if (!maisonTransit) {
+            throw new NotFoundException(
+                `Maison de transit avec l'ID ${id} non trouvée`,
+            );
+        }
+
+        // Vérifier si déjà supprimée
+        if (maisonTransit.deletedAt !== null) {
+            throw new ConflictException(
+                `La maison de transit avec l'ID ${id} est déjà supprimée`,
+            );
+        }
+
+        // Vérifier s'il y a des relations actives (non supprimées)
+        const activeRelationsCount = await this.prisma.maisonTransit.findUnique({
             where: { id },
             select: {
                 _count: {
                     select: {
-                        depositaires: true,
-                        declarations: true,
+                        depositaires: {
+                            where: { deletedAt: null },
+                        },
+                        declarations: {
+                            where: { deletedAt: null },
+                        },
                     },
                 },
             },
         });
 
-        if (relationsCount) {
+        if (activeRelationsCount) {
             const totalRelations =
-                relationsCount._count.depositaires +
-                relationsCount._count.declarations;
+                activeRelationsCount._count.depositaires +
+                activeRelationsCount._count.declarations;
 
             if (totalRelations > 0) {
                 throw new ConflictException(
-                    `Impossible de supprimer cette maison de transit car elle est associée à ${totalRelations} enregistrement(s) ` +
-                    `(${relationsCount._count.depositaires} dépositaire(s), ` +
-                    `${relationsCount._count.declarations} déclaration(s))`,
+                    `Impossible de supprimer cette maison de transit car elle est associée à ${totalRelations} enregistrement(s) actif(s) ` +
+                    `(${activeRelationsCount._count.depositaires} dépositaire(s), ` +
+                    `${activeRelationsCount._count.declarations} déclaration(s))`,
                 );
             }
         }
