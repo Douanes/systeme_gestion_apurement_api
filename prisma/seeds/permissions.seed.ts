@@ -184,6 +184,28 @@ const PERMISSION_DETAILS: Record<
     description: 'Gérer le personnel d\'une maison de transit',
   },
 
+  // Maisons de Transit Requests
+  [PERMISSIONS.MAISON_TRANSIT_REQUESTS_READ]: {
+    resource: 'maison-transit-requests',
+    action: 'read',
+    description: 'Consulter les demandes de création de maison de transit',
+  },
+  [PERMISSIONS.MAISON_TRANSIT_REQUESTS_INVITE]: {
+    resource: 'maison-transit-requests',
+    action: 'invite',
+    description: 'Inviter un transitaire à créer une maison de transit',
+  },
+  [PERMISSIONS.MAISON_TRANSIT_REQUESTS_REVIEW]: {
+    resource: 'maison-transit-requests',
+    action: 'review',
+    description: 'Valider ou rejeter une demande de création',
+  },
+  [PERMISSIONS.MAISON_TRANSIT_REQUESTS_DELETE]: {
+    resource: 'maison-transit-requests',
+    action: 'delete',
+    description: 'Supprimer une demande de création',
+  },
+
   // Bureaux de Sortie
   [PERMISSIONS.BUREAUX_SORTIES_READ]: {
     resource: 'bureaux-sorties',
