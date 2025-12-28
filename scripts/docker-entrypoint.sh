@@ -55,6 +55,15 @@ if [ "$RUN_MIGRATIONS" = "true" ]; then
         error "❌ Prisma Client generation failed!"
         exit 1
     fi
+
+    # Run seeders (idempotent)
+    log "🌱 Running database seeders..."
+    if npm run db:seed; then
+        log "✅ Database seeding completed successfully"
+    else
+        error "❌ Database seeding failed!"
+        exit 1
+    fi
 else
     warning "⏭️ Skipping migrations (RUN_MIGRATIONS=$RUN_MIGRATIONS)"
 fi
