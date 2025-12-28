@@ -20,9 +20,9 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "db:seed": "ts-node prisma/seed.ts",
+    "db:seed": "ts-node -r tsconfig-paths/register prisma/seed.ts",
     "db:seed:prod": "node dist/prisma/seed.js",
-    "db:seed:permissions": "ts-node prisma/seeds/permissions.seed.ts",
+    "db:seed:permissions": "ts-node -r tsconfig-paths/register prisma/seeds/permissions.seed.ts",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
     "db:setup": "npm run db:migrate:deploy && npm run db:seed"
