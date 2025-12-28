@@ -14,6 +14,7 @@ export enum UserRole {
     AGENT = 'AGENT',
     SUPERVISEUR = 'SUPERVISEUR',
     TRANSITAIRE = 'TRANSITAIRE',
+    DECLARANT = 'DECLARANT',
 }
 
 /**
