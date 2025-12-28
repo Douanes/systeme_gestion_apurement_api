@@ -51,7 +51,9 @@ export class UsersService {
         }
 
         // Vérifier que le rôle demandé est bien ADMIN ou SUPERVISEUR
-        if (dto.role !== UserRole.ADMIN && dto.role !== UserRole.SUPERVISEUR) {
+        // SystemUserRole values are validated by class-validator, but we check here for extra safety
+        const allowedRoles = ['ADMIN', 'SUPERVISEUR'];
+        if (!allowedRoles.includes(dto.role)) {
             throw new BadRequestException(
                 'Ce endpoint ne peut créer que des ADMIN ou SUPERVISEUR',
             );
