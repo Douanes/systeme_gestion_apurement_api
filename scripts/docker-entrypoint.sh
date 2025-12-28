@@ -58,7 +58,7 @@ if [ "$RUN_MIGRATIONS" = "true" ]; then
 
     # Run seeders (idempotent)
     log "🌱 Running database seeders..."
-    if npm run db:seed:prod; then
+    if npm run db:seed; then
         log "✅ Database seeding completed successfully"
     else
         error "❌ Database seeding failed!"

@@ -8,16 +8,21 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "declaration": false,
-    "sourceMap": false
+    "sourceMap": false,
+    "baseUrl": "./",
+    "paths": {
+      "libs/*": ["libs/*"]
+    }
   },
   "include": [
     "prisma/seed.ts",
-    "prisma/seeds/**/*.ts"
+    "prisma/seeds/**/*.ts",
+    "src/permissions/constants/**/*.ts",
+    "libs/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "dist",
-    "test",
-    "src"
+    "test"
   ]
 }

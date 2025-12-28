@@ -23,11 +23,8 @@ COPY . .
 # Build
 RUN npm run build
 
-# Compile seeders to JavaScript using tsconfig
-RUN npx tsc --project tsconfig.build.seed.json
-
 # Verify build output
-RUN ls -la dist/src/ && test -f dist/src/main.js && ls -la dist/prisma/ && test -f dist/prisma/seed.js
+RUN ls -la dist/src/ && test -f dist/src/main.js
 
 # Production stage
 FROM node:20.18.1-slim
@@ -47,6 +44,9 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/tsconfig*.json ./
+COPY --from=builder /app/libs ./libs
+COPY --from=builder /app/src/permissions ./src/permissions
 
 # Copy migration script
 COPY scripts/migrate.sh ./scripts/migrate.sh
