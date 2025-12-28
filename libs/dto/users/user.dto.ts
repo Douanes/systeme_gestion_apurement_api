@@ -14,6 +14,14 @@ import {
 import { UserRole } from '../auth/auth.dto';
 
 /**
+ * Rôles autorisés pour les utilisateurs système
+ */
+export enum SystemUserRole {
+    ADMIN = 'ADMIN',
+    SUPERVISEUR = 'SUPERVISEUR',
+}
+
+/**
  * DTO pour créer un utilisateur système (ADMIN ou SUPERVISEUR)
  */
 export class CreateSystemUserDto {
@@ -72,12 +80,12 @@ export class CreateSystemUserDto {
     phone?: string;
 
     @ApiProperty({
-        description: 'Rôle de l\'utilisateur',
-        enum: UserRole,
-        example: UserRole.ADMIN,
+        description: 'Rôle de l\'utilisateur (ADMIN ou SUPERVISEUR uniquement)',
+        enum: SystemUserRole,
+        example: SystemUserRole.ADMIN,
     })
-    @IsEnum(UserRole)
-    role: UserRole.ADMIN | UserRole.SUPERVISEUR;
+    @IsEnum(SystemUserRole, { message: 'Le rôle doit être ADMIN ou SUPERVISEUR' })
+    role: SystemUserRole;
 }
 
 /**

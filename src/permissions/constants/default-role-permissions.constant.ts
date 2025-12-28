@@ -233,6 +233,47 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     // Régimes - Read Only
     PERMISSIONS.REGIMES_READ,
   ],
+
+  /**
+   * DECLARANT: Création et gestion des déclarations pour sa maison de transit
+   */
+  [UserRole.DECLARANT]: [
+    // Déclarations - Full CRUD (seulement pour sa maison de transit)
+    PERMISSIONS.DECLARATIONS_READ,
+    PERMISSIONS.DECLARATIONS_CREATE,
+    PERMISSIONS.DECLARATIONS_UPDATE,
+    PERMISSIONS.DECLARATIONS_DELETE,
+
+    // Ordres de Mission - Read and Create
+    PERMISSIONS.ORDRE_MISSIONS_READ,
+    PERMISSIONS.ORDRE_MISSIONS_CREATE,
+    PERMISSIONS.ORDRE_MISSIONS_UPDATE,
+
+    // Maisons de Transit - Read Only (seulement la sienne)
+    PERMISSIONS.MAISONS_TRANSIT_READ,
+
+    // Dépositaires - Read and Create
+    PERMISSIONS.DEPOSITAIRES_READ,
+    PERMISSIONS.DEPOSITAIRES_CREATE,
+
+    // Colis - Full CRUD
+    PERMISSIONS.COLIS_READ,
+    PERMISSIONS.COLIS_CREATE,
+    PERMISSIONS.COLIS_UPDATE,
+    PERMISSIONS.COLIS_DELETE,
+
+    // Transports - Full CRUD
+    PERMISSIONS.TRANSPORTS_READ,
+    PERMISSIONS.TRANSPORTS_CREATE,
+    PERMISSIONS.TRANSPORTS_UPDATE,
+    PERMISSIONS.TRANSPORTS_DELETE,
+
+    // Bureaux de Sortie - Read Only
+    PERMISSIONS.BUREAUX_SORTIES_READ,
+
+    // Régimes - Read Only
+    PERMISSIONS.REGIMES_READ,
+  ],
 };
 
 /**
