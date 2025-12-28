@@ -13,6 +13,7 @@ enum UserRole {
   AGENT
   SUPERVISEUR
   TRANSITAIRE
+  DECLARANT
 }
 
 enum StatutApurement {
