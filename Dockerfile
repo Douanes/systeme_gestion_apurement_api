@@ -23,11 +23,11 @@ COPY . .
 # Build
 RUN npm run build
 
-# Compile seeders (TypeScript to JavaScript)
-RUN npx tsc prisma/seed.ts prisma/seeds/permissions.seed.ts --outDir dist --module commonjs --esModuleInterop --skipLibCheck
+# Compile seeders to JavaScript using tsconfig
+RUN npx tsc --project tsconfig.build.seed.json
 
 # Verify build output
-RUN ls -la dist/src/ && test -f dist/src/main.js && test -f dist/prisma/seed.js
+RUN ls -la dist/src/ && test -f dist/src/main.js && ls -la dist/prisma/ && test -f dist/prisma/seed.js
 
 # Production stage
 FROM node:20.18.1-slim
