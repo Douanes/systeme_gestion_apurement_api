@@ -45,6 +45,11 @@ export class RequestDocumentDto {
     uploadedAt: Date;
 }
 
+/**
+ * DTO de réponse pour les demandes de maison de transit
+ * IMPORTANT: Le token d'invitation et le token d'activation sont des données sensibles
+ * qui ne doivent JAMAIS être retournées dans les réponses publiques ou listings
+ */
 export class MaisonTransitRequestResponseDto {
     @ApiProperty({ description: 'ID de la demande', example: 1 })
     id: number;
@@ -93,16 +98,10 @@ export class MaisonTransitRequestResponseDto {
     status: RequestStatus;
 
     @ApiPropertyOptional({
-        description: 'Token d\'invitation (visible uniquement par admin/inviteur)',
-        example: 'abc123def456ghi789',
-    })
-    invitationToken?: string;
-
-    @ApiProperty({
-        description: 'Date d\'expiration du token',
+        description: 'Date d\'expiration du token (sans exposer le token lui-même)',
         example: '2024-01-22T10:30:00Z',
     })
-    tokenExpiresAt: Date;
+    tokenExpiresAt?: Date;
 
     @ApiProperty({
         description: 'ID de l\'utilisateur qui a invité',
@@ -151,23 +150,38 @@ export class MaisonTransitRequestResponseDto {
         type: [RequestDocumentDto],
     })
     documents?: RequestDocumentDto[];
+
+    // Champs internes non exposés dans l'API (pour usage interne uniquement)
+    invitationToken?: string; // Ne JAMAIS retourner ce champ
+    activationToken?: string; // Ne JAMAIS retourner ce champ
 }
 
+/**
+ * Réponse lors de l'invitation d'un transitaire
+ * SÉCURITÉ OWASP: Le token n'est PAS retourné dans la réponse pour éviter toute exposition
+ * Le token est envoyé uniquement par email au destinataire
+ */
 export class InvitationResponseDto {
     @ApiProperty({
         description: 'Message de confirmation',
-        example: 'Invitation envoyée avec succès',
+        example: 'Invitation envoyée avec succès à transitaire@example.com',
     })
     message: string;
 
     @ApiProperty({
-        description: 'Token d\'invitation généré',
-        example: 'abc123def456ghi789',
+        description: 'Email du destinataire de l\'invitation',
+        example: 'transitaire@example.com',
     })
-    invitationToken: string;
+    email: string;
 
     @ApiProperty({
-        description: 'Date d\'expiration du token',
+        description: 'Nom de l\'entreprise invitée',
+        example: 'TRANSIT PLUS SARL',
+    })
+    companyName: string;
+
+    @ApiProperty({
+        description: 'Date d\'expiration du token (le token lui-même est envoyé par email uniquement)',
         example: '2024-01-22T10:30:00Z',
     })
     expiresAt: Date;
