@@ -116,9 +116,12 @@ export class MaisonTransitRequestsService {
             );
         }
 
+        // SÉCURITÉ: Ne pas retourner le token dans la réponse
+        // Le token est déjà envoyé par email au destinataire
         return {
-            message: 'Invitation envoyée avec succès',
-            invitationToken,
+            message: `Invitation envoyée avec succès à ${dto.email}`,
+            email: dto.email,
+            companyName: dto.companyName,
             expiresAt: tokenExpiresAt,
         };
     }
@@ -486,7 +489,10 @@ export class MaisonTransitRequestsService {
     }
 
     /**
-     * Convertir en DTO
+     * Convertir en DTO sécurisé (SANS tokens sensibles)
+     * IMPORTANT: Cette méthode exclut les tokens pour respecter les principes OWASP
+     * - Pas d'exposition du invitationToken (permettrait à un attaquant de soumettre une demande)
+     * - Pas d'exposition du activationToken (permettrait à un attaquant d'activer un compte)
      */
     private toResponseDto(request: any): MaisonTransitRequestResponseDto {
         return {
@@ -498,7 +504,9 @@ export class MaisonTransitRequestsService {
             ninea: request.ninea,
             registreCommerce: request.registreCommerce,
             status: request.status,
-            invitationToken: request.invitationToken,
+            // SÉCURITÉ: Ne jamais exposer invitationToken ou activationToken
+            // invitationToken: request.invitationToken, // ENLEVÉ pour sécurité
+            // activationToken: request.activationToken, // ENLEVÉ pour sécurité
             tokenExpiresAt: request.tokenExpiresAt,
             invitedById: request.invitedById,
             reviewedById: request.reviewedById,
