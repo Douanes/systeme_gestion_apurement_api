@@ -186,8 +186,11 @@ Vous envoyez un paramètre à Cloudinary qui n'est pas inclus dans la signature.
 
    // ❌ INCORRECT - Ne PAS envoyer ces paramètres:
    // formData.append('folder', ...);        // Pas dans la signature !
-   // formData.append('upload_preset', ...); // Déjà géré côté serveur
+   // formData.append('upload_preset', ...); // Pas dans la signature !
+   // formData.append('cloud_name', ...);    // Pas dans la signature !
    ```
+
+   > **Important**: Envoyez **uniquement** les paramètres qui ont été signés côté serveur. Actuellement, seuls `public_id` et `timestamp` sont signés, donc envoyez seulement ces paramètres + `file`, `api_key` et `signature`.
 
 2. **Vérifiez la réponse du backend:**
    - Si un paramètre est retourné mais cause une erreur de signature, ne l'envoyez pas
