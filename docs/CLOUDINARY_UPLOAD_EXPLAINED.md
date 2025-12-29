@@ -45,10 +45,11 @@ Response: {
   "timestamp": 1703419200,                                                   // ← Timestamp
   "api_key": "123456789",                                                    // ← API key
   "cloud_name": "votre-cloud",                                               // ← Cloud name
-  "public_id": "maison-transit-documents/REGISTRE_COMMERCE_RC_..._1703419200", // ← ID unique
-  "folder": "maison-transit-documents"                                       // ← Dossier
+  "public_id": "maison-transit-documents/REGISTRE_COMMERCE_RC_..._1703419200" // ← ID unique (inclut le dossier)
 }
 ```
+
+> **Note importante:** Le paramètre `folder` n'est **pas** inclus dans la réponse car il n'est pas dans la signature. Le `public_id` contient déjà le chemin complet avec le dossier (`maison-transit-documents/...`), donc envoyer `folder` séparément à Cloudinary causerait une erreur de signature invalide.
 
 ### 3️⃣ Frontend upload vers Cloudinary
 
@@ -59,9 +60,23 @@ formData.append('api_key', api_key);
 formData.append('timestamp', timestamp);
 formData.append('signature', signature);
 formData.append('public_id', public_id);
+// ⚠️ IMPORTANT: Ne PAS envoyer 'folder' - il est déjà dans le public_id !
+// formData.append('folder', folder); // ❌ ERREUR: causerait "Invalid Signature"
 
 fetch(upload_url, { method: 'POST', body: formData })
 ```
+
+**⚠️ Erreur courante à éviter:**
+Si vous envoyez le paramètre `folder` à Cloudinary alors qu'il n'est pas inclus dans la signature, vous obtiendrez cette erreur:
+```json
+{
+  "error": {
+    "message": "Invalid Signature 54cac220fc599dcd70ef87bdde10f8bb6cc08026. String to sign - 'folder=maison-transit-documents&public_id=maison-transit-documents/REGISTRE_COMMERCE_ODM_1767045206837&timestamp=1767045207'."
+  }
+}
+```
+
+**Solution:** N'envoyez que les paramètres retournés par le backend (`api_key`, `timestamp`, `signature`, `public_id`). Le dossier est déjà inclus dans le `public_id`.
 
 ### 4️⃣ Cloudinary retourne les infos du fichier uploadé
 
@@ -141,6 +156,49 @@ public_id = "maison-transit-documents/REGISTRE_COMMERCE_RC_Transport_Express_170
    maison-transit-documents/REGISTRE_COMMERCE_...
    └─ Tous dans le même dossier
    ```
+
+## 🐛 Problèmes courants et solutions
+
+### ❌ Erreur: "Invalid Signature"
+
+**Symptôme:**
+```json
+{
+  "error": {
+    "message": "Invalid Signature abc123. String to sign - 'folder=maison-transit-documents&public_id=...&timestamp=...'"
+  }
+}
+```
+
+**Cause:**
+Vous envoyez un paramètre à Cloudinary qui n'est pas inclus dans la signature.
+
+**Solutions:**
+
+1. **N'envoyez QUE les paramètres signés:**
+   ```javascript
+   // ✅ CORRECT - Envoyer seulement ces paramètres:
+   formData.append('file', file);
+   formData.append('api_key', response.api_key);
+   formData.append('timestamp', response.timestamp);
+   formData.append('signature', response.signature);
+   formData.append('public_id', response.public_id);
+
+   // ❌ INCORRECT - Ne PAS envoyer ces paramètres:
+   // formData.append('folder', ...);        // Pas dans la signature !
+   // formData.append('upload_preset', ...); // Déjà géré côté serveur
+   ```
+
+2. **Vérifiez la réponse du backend:**
+   - Si un paramètre est retourné mais cause une erreur de signature, ne l'envoyez pas
+   - Seuls `api_key`, `timestamp`, `signature`, `public_id` doivent être envoyés
+
+3. **Le `public_id` contient déjà le folder:**
+   ```
+   public_id = "maison-transit-documents/REGISTRE_COMMERCE_file_123456"
+                └────────── folder ──────────┘└────── filename ──────┘
+   ```
+   Donc pas besoin d'envoyer `folder` séparément.
 
 ## 🔒 Sécurité
 

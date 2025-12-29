@@ -53,14 +53,8 @@ export class UploadSignatureResponseDto {
     cloud_name: string;
 
     @ApiProperty({
-        description: 'Public ID du fichier dans Cloudinary',
-        example: 'maison-transit-docs/REGISTRE_COMMERCE_document_1703001234567',
+        description: 'Public ID du fichier dans Cloudinary (inclut le chemin complet avec le dossier)',
+        example: 'maison-transit-documents/REGISTRE_COMMERCE_document_1703001234567',
     })
     public_id: string;
-
-    @ApiProperty({
-        description: 'Dossier de destination dans Cloudinary',
-        example: 'maison-transit-docs',
-    })
-    folder: string;
 }

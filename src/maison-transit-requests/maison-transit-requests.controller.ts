@@ -137,7 +137,8 @@ export class MaisonTransitRequestsController {
             upload_url: uploadUrl,
             ...signatureData,
             public_id: publicId,
-            folder,
+            // Note: Ne pas inclure 'folder' car il n'est pas dans la signature
+            // Le public_id contient déjà le chemin complet (folder/filename)
         };
     }
 
