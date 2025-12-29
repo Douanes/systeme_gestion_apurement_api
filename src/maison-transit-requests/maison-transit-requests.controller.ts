@@ -127,7 +127,8 @@ export class MaisonTransitRequestsController {
 
         const signatureData = this.cloudinaryService.generateSignature({
             public_id: publicId,
-            upload_preset: 'mt_documents',
+            // Note: upload_preset retiré car il n'est pas nécessaire
+            // Le public_id définit déjà le dossier de destination
         });
 
         // Retourner l'URL d'upload Cloudinary
