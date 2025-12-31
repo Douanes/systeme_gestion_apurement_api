@@ -49,9 +49,10 @@ Response: {
 
 > **Note importante:**
 > - Le paramètre `folder` n'est **pas** inclus dans la réponse car le `public_id` contient déjà le chemin complet
-> - Les paramètres `resource_type` et `type` sont retournés par le backend mais **ne font PAS partie de la signature**
-> - Seuls `public_id` et `timestamp` sont signés
-> - Le frontend doit envoyer `resource_type` et `type` dans le FormData mais pas les inclure dans le calcul de signature
+> - Le paramètre `type: 'authenticated'` est **DANS la signature** (obligatoire pour les fichiers privés)
+> - Le paramètre `resource_type: 'raw'` n'est **PAS dans la signature** mais doit être envoyé
+> - Paramètres signés: `public_id`, `type`, `timestamp`
+> - Paramètre non signé mais requis: `resource_type`
 
 ### 3️⃣ Frontend upload vers Cloudinary
 
@@ -72,8 +73,8 @@ fetch(response.upload_url, { method: 'POST', body: formData })
 **Points clés:**
 - ✅ Tous les paramètres nécessaires sont retournés par le backend
 - ✅ Le frontend n'a qu'à construire le FormData avec les valeurs reçues
-- ✅ `type` et `resource_type` sont envoyés mais **ne sont pas dans la signature**
-- ✅ Seuls `public_id` et `timestamp` sont signés
+- ✅ Paramètres signés: `public_id`, `type`, `timestamp`
+- ✅ Paramètre non signé: `resource_type` (mais doit être envoyé)
 
 **⚠️ Erreur courante à éviter:**
 Si vous envoyez le paramètre `folder` à Cloudinary alors qu'il n'est pas inclus dans la signature, vous obtiendrez cette erreur:
@@ -241,7 +242,10 @@ Vous envoyez un paramètre à Cloudinary qui n'est pas inclus dans la signature.
    // formData.append('cloud_name', ...);    // Pas dans la signature !
    ```
 
-   > **Important**: Envoyez **uniquement** les paramètres qui ont été signés côté serveur (`public_id`, `type`, `resource_type`, `timestamp`), plus les paramètres requis (`file`, `api_key`, `signature`).
+   > **Important**: Envoyez **uniquement** les paramètres retournés par le backend:
+   > - Signés: `public_id`, `type`, `timestamp`
+   > - Non signé: `resource_type`
+   > - Requis: `file`, `api_key`, `signature`
 
 2. **Le fichier sera uploadé en mode `authenticated` (privé)**:
    - Les URLs directes depuis Cloudinary ne fonctionneront pas (401 Unauthorized)
@@ -261,9 +265,10 @@ Vous envoyez un paramètre à Cloudinary qui n'est pas inclus dans la signature.
 
 1. **Signature pour l'upload**
    - Le `API_SECRET` reste sur le serveur
-   - Le backend génère la signature avec les paramètres (`public_id`, `type`, `resource_type`, `timestamp`)
+   - Le backend génère la signature avec les paramètres signés: `public_id`, `type`, `timestamp`
+   - Le paramètre `resource_type` n'est PAS signé mais doit être envoyé
    - La signature est valide pendant la durée de l'upload
-   - Cloudinary vérifie que la signature correspond aux paramètres envoyés
+   - Cloudinary vérifie que la signature correspond exactement aux paramètres signés
 
 2. **Stockage privé**
    - Les fichiers sont uploadés en mode `authenticated` (privé)

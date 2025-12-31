@@ -18,15 +18,16 @@ export class CloudinaryService {
      * Générer une signature pour l'upload direct depuis le client
      * Cette méthode sécurise l'upload en signant les paramètres côté serveur
      *
-     * IMPORTANT: Pour les uploads en mode 'authenticated' (privé), seuls public_id et timestamp
-     * sont signés. Les paramètres type et resource_type doivent être envoyés par le frontend
-     * dans le FormData mais ne font PAS partie de la signature.
+     * IMPORTANT: Pour les uploads en mode 'authenticated' (privé), le paramètre 'type'
+     * DOIT être inclus dans la signature. Le paramètre 'resource_type' n'est PAS signé
+     * mais doit être envoyé par le frontend dans le FormData.
      */
     generateSignature(params: {
         folder?: string;
         public_id?: string;
         timestamp?: number;
         upload_preset?: string;
+        type?: string;
     }): {
         signature: string;
         timestamp: number;
@@ -52,8 +53,11 @@ export class CloudinaryService {
             paramsToSign.upload_preset = params.upload_preset;
         }
 
-        // NOTE: resource_type et type ne sont PAS signés pour les uploads 'authenticated'
-        // Le frontend doit les envoyer dans le FormData mais ils ne font pas partie de la signature
+        if (params.type) {
+            paramsToSign.type = params.type;
+        }
+
+        // NOTE: resource_type n'est PAS signé mais le frontend doit l'envoyer dans le FormData
 
         // Générer la signature
         const apiSecret = this.configService.get<string>('CLOUDINARY_API_SECRET');

@@ -125,9 +125,11 @@ export class MaisonTransitRequestsController {
 
         const publicId = `${folder}/${body.documentType}_${sanitizedFileName}_${timestamp}`;
 
-        // Générer la signature avec seulement public_id et timestamp
+        // Générer la signature avec public_id, type et timestamp
+        // IMPORTANT: 'type' DOIT être dans la signature pour les uploads 'authenticated'
         const signatureData = this.cloudinaryService.generateSignature({
             public_id: publicId,
+            type: 'authenticated',
         });
 
         // Retourner l'URL d'upload Cloudinary pour fichiers raw
@@ -137,10 +139,10 @@ export class MaisonTransitRequestsController {
             upload_url: uploadUrl,
             ...signatureData,
             public_id: publicId,
-            resource_type: 'raw', // Type raw pour PDFs et documents
-            type: 'authenticated', // Upload en mode privé (sécurisé)
-            // ⚠️ IMPORTANT: resource_type et type ne sont PAS dans la signature
-            // mais le frontend doit les envoyer dans le FormData à Cloudinary
+            resource_type: 'raw', // Type raw pour PDFs et documents (NON signé)
+            type: 'authenticated', // Upload en mode privé (SIGNÉ)
+            // ⚠️ IMPORTANT: 'type' est dans la signature mais 'resource_type' ne l'est PAS
+            // Le frontend doit envoyer les deux dans le FormData à Cloudinary
         };
     }
 
