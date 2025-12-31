@@ -519,11 +519,30 @@ export class MaisonTransitRequestsService {
                 id: doc.id,
                 type: doc.type,
                 fileName: doc.fileName,
-                fileUrl: doc.fileUrl,
+                fileUrl: this.getViewableCloudinaryUrl(doc.fileUrl, doc.mimeType),
                 fileSize: doc.fileSize,
                 mimeType: doc.mimeType,
                 uploadedAt: doc.uploadedAt,
             })),
         };
+    }
+
+    /**
+     * Obtenir l'URL Cloudinary correcte pour visualiser un fichier
+     * Cloudinary retourne /image/upload/ par défaut, mais les PDFs et documents
+     * nécessitent /raw/upload/ pour être téléchargeables/visualisables
+     */
+    private getViewableCloudinaryUrl(url: string, mimeType: string | null): string {
+        if (!url) return url;
+
+        // Si c'est un PDF ou un document (pas une image)
+        const isDocument = mimeType && !mimeType.startsWith('image/');
+
+        if (isDocument && url.includes('/image/upload/')) {
+            // Remplacer /image/upload/ par /raw/upload/ pour les documents
+            return url.replace('/image/upload/', '/raw/upload/');
+        }
+
+        return url;
     }
 }
