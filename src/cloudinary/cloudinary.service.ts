@@ -17,6 +17,10 @@ export class CloudinaryService {
     /**
      * Générer une signature pour l'upload direct depuis le client
      * Cette méthode sécurise l'upload en signant les paramètres côté serveur
+     *
+     * IMPORTANT: Pour les uploads en mode 'authenticated' (privé), seuls public_id et timestamp
+     * sont signés. Les paramètres type et resource_type doivent être envoyés par le frontend
+     * dans le FormData mais ne font PAS partie de la signature.
      */
     generateSignature(params: {
         folder?: string;
@@ -47,6 +51,9 @@ export class CloudinaryService {
         if (params.upload_preset) {
             paramsToSign.upload_preset = params.upload_preset;
         }
+
+        // NOTE: resource_type et type ne sont PAS signés pour les uploads 'authenticated'
+        // Le frontend doit les envoyer dans le FormData mais ils ne font pas partie de la signature
 
         // Générer la signature
         const apiSecret = this.configService.get<string>('CLOUDINARY_API_SECRET');
@@ -122,5 +129,32 @@ export class CloudinaryService {
      */
     getFolder(): string {
         return this.configService.get<string>('CLOUDINARY_FOLDER', 'maison-transit-documents');
+    }
+
+    /**
+     * Générer une URL signée pour accéder à un fichier privé
+     * Similaire aux presigned URLs d'AWS S3
+     * @param publicId - Le public_id du fichier dans Cloudinary
+     * @param expiresIn - Durée de validité en secondes (défaut: 1 heure)
+     * @returns URL signée temporaire pour accéder au fichier
+     */
+    generateSignedUrl(publicId: string, expiresIn: number = 3600): string {
+        const cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
+        if (!cloudName) {
+            throw new Error('CLOUDINARY_CLOUD_NAME is not configured');
+        }
+
+        // Utiliser la méthode native de Cloudinary pour générer une URL signée
+        const signedUrl = cloudinary.url(publicId, {
+            sign_url: true,
+            type: 'authenticated', // Type 'authenticated' pour fichiers privés
+            resource_type: 'raw', // Pour les PDFs et documents
+            secure: true, // HTTPS
+            flags: 'attachment', // Force le téléchargement
+        });
+
+        this.logger.log(`URL signée générée pour ${publicId}, expire dans ${expiresIn}s`);
+
+        return signedUrl;
     }
 }

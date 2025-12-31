@@ -57,4 +57,16 @@ export class UploadSignatureResponseDto {
         example: 'maison-transit-documents/REGISTRE_COMMERCE_document_1703001234567',
     })
     public_id: string;
+
+    @ApiProperty({
+        description: 'Type de ressource Cloudinary (raw pour PDFs et documents, image pour images)',
+        example: 'raw',
+    })
+    resource_type: string;
+
+    @ApiProperty({
+        description: 'Type d\'upload Cloudinary (authenticated pour fichiers privés, upload pour publics)',
+        example: 'authenticated',
+    })
+    type: string;
 }

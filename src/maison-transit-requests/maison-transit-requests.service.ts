@@ -519,7 +519,7 @@ export class MaisonTransitRequestsService {
                 id: doc.id,
                 type: doc.type,
                 fileName: doc.fileName,
-                fileUrl: this.getViewableCloudinaryUrl(doc.fileUrl, doc.mimeType),
+                fileUrl: this.getViewableCloudinaryUrl(doc.fileUrl),
                 fileSize: doc.fileSize,
                 mimeType: doc.mimeType,
                 uploadedAt: doc.uploadedAt,
@@ -528,21 +528,31 @@ export class MaisonTransitRequestsService {
     }
 
     /**
-     * Obtenir l'URL Cloudinary correcte pour visualiser un fichier
-     * Cloudinary retourne /image/upload/ par défaut, mais les PDFs et documents
-     * nécessitent /raw/upload/ pour être téléchargeables/visualisables
+     * Obtenir une URL signée temporaire pour accéder à un fichier privé Cloudinary
+     * Les fichiers sont stockés en mode 'authenticated' pour la sécurité
+     * Cette méthode génère une URL signée valide 1 heure (comme AWS S3 presigned URLs)
      */
-    private getViewableCloudinaryUrl(url: string, mimeType: string | null): string {
+    private getViewableCloudinaryUrl(url: string): string {
         if (!url) return url;
 
-        // Si c'est un PDF ou un document (pas une image)
-        const isDocument = mimeType && !mimeType.startsWith('image/');
+        // Extraire le public_id depuis l'URL Cloudinary
+        // Format: https://res.cloudinary.com/{cloud}/image/upload/v{version}/{public_id}.pdf
+        // Ou: https://res.cloudinary.com/{cloud}/raw/upload/{public_id}.pdf
+        const publicIdMatch = url.match(/\/(?:image|raw)\/upload\/(?:v\d+\/)?(.+)$/);
 
-        if (isDocument && url.includes('/image/upload/')) {
-            // Remplacer /image/upload/ par /raw/upload/ pour les documents
-            return url.replace('/image/upload/', '/raw/upload/');
+        if (!publicIdMatch) {
+            this.logger.warn(`Impossible d'extraire le public_id de l'URL: ${url}`);
+            return url;
         }
 
-        return url;
+        const publicId = publicIdMatch[1];
+
+        // Générer une URL signée avec le CloudinaryService
+        try {
+            return this.cloudinaryService.generateSignedUrl(publicId, 3600); // Expire dans 1 heure
+        } catch (error) {
+            this.logger.error(`Erreur lors de la génération de l'URL signée: ${error.message}`);
+            return url; // Fallback sur l'URL originale en cas d'erreur
+        }
     }
 }

@@ -51,6 +51,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
                 deletedAt: true,
             },
         });
+console.log(user);
 
         if (!user) {
             throw new UnauthorizedException('Utilisateur non trouvé');

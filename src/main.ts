@@ -58,11 +58,24 @@ async function bootstrap() {
   // Swagger UI setup
   SwaggerModule.setup('api/docs', app, document, {
     swaggerOptions: {
-      persistAuthorization: true,
-      docExpansion: 'none',
-      filter: true,
-      showRequestDuration: true,
+      persistAuthorization: true, // Garde le token JWT même après refresh
+      docExpansion: 'none', // Sections collapsées par défaut
+      filter: true, // Barre de recherche activée
+      showRequestDuration: true, // Affiche la durée des requêtes
+      tagsSorter: 'alpha', // Trie les tags alphabétiquement
+      operationsSorter: 'alpha', // Trie les opérations alphabétiquement
+      defaultModelsExpandDepth: 3, // Profondeur d'expansion des modèles
+      defaultModelExpandDepth: 3, // Profondeur d'expansion des schémas
+      displayRequestDuration: true, // Affiche la durée des requêtes
+      tryItOutEnabled: true, // Active "Try it out" par défaut
     },
+    customSiteTitle: 'Apurement API - Swagger UI',
+    customfavIcon: '/favicon.ico',
+    customCss: `
+      .swagger-ui .topbar { display: none }
+      .swagger-ui .info { margin: 20px 0; }
+      .swagger-ui .info .title { color: #1976d2; }
+    `,
   });
 
   // Serve OpenAPI JSON

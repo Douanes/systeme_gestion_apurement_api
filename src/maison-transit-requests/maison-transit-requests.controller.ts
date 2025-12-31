@@ -49,7 +49,7 @@ export class MaisonTransitRequestsController {
     @Post('invite')
     @UseGuards(JwtAuthGuard, PermissionsGuard)
     @RequirePermissions('maison_transit_requests.invite')
-    @ApiBearerAuth()
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({
         summary: 'Inviter un transitaire à créer une maison de transit',
         description:
@@ -125,21 +125,22 @@ export class MaisonTransitRequestsController {
 
         const publicId = `${folder}/${body.documentType}_${sanitizedFileName}_${timestamp}`;
 
+        // Générer la signature avec seulement public_id et timestamp
         const signatureData = this.cloudinaryService.generateSignature({
             public_id: publicId,
-            // Note: upload_preset retiré car il n'est pas nécessaire
-            // Le public_id définit déjà le dossier de destination
         });
 
-        // Retourner l'URL d'upload Cloudinary
-        const uploadUrl = `https://api.cloudinary.com/v1_1/${signatureData.cloud_name}/auto/upload`;
+        // Retourner l'URL d'upload Cloudinary pour fichiers raw
+        const uploadUrl = `https://api.cloudinary.com/v1_1/${signatureData.cloud_name}/raw/upload`;
 
         return {
             upload_url: uploadUrl,
             ...signatureData,
             public_id: publicId,
-            // Note: Ne pas inclure 'folder' car il n'est pas dans la signature
-            // Le public_id contient déjà le chemin complet (folder/filename)
+            resource_type: 'raw', // Type raw pour PDFs et documents
+            type: 'authenticated', // Upload en mode privé (sécurisé)
+            // ⚠️ IMPORTANT: resource_type et type ne sont PAS dans la signature
+            // mais le frontend doit les envoyer dans le FormData à Cloudinary
         };
     }
 
@@ -187,7 +188,7 @@ export class MaisonTransitRequestsController {
     @Patch(':id/review')
     @UseGuards(JwtAuthGuard, PermissionsGuard)
     @RequirePermissions('maison_transit_requests.review')
-    @ApiBearerAuth()
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({
         summary: 'Valider ou rejeter une demande de création de maison de transit',
         description:
@@ -272,7 +273,7 @@ export class MaisonTransitRequestsController {
     @Get()
     @UseGuards(JwtAuthGuard, PermissionsGuard)
     @RequirePermissions('maison_transit_requests.read')
-    @ApiBearerAuth()
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({
         summary: 'Lister toutes les demandes de création de maison de transit',
         description:
@@ -304,7 +305,7 @@ export class MaisonTransitRequestsController {
     @Get(':id')
     @UseGuards(JwtAuthGuard, PermissionsGuard)
     @RequirePermissions('maison_transit_requests.read')
-    @ApiBearerAuth()
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({
         summary: 'Récupérer une demande par son ID',
         description:
