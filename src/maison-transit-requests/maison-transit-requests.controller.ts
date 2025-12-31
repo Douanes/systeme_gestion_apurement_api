@@ -49,7 +49,7 @@ export class MaisonTransitRequestsController {
     @Post('invite')
     @UseGuards(JwtAuthGuard, PermissionsGuard)
     @RequirePermissions('maison_transit_requests.invite')
-    @ApiBearerAuth()
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({
         summary: 'Inviter un transitaire à créer une maison de transit',
         description:
@@ -187,7 +187,7 @@ export class MaisonTransitRequestsController {
     @Patch(':id/review')
     @UseGuards(JwtAuthGuard, PermissionsGuard)
     @RequirePermissions('maison_transit_requests.review')
-    @ApiBearerAuth()
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({
         summary: 'Valider ou rejeter une demande de création de maison de transit',
         description:
@@ -272,7 +272,7 @@ export class MaisonTransitRequestsController {
     @Get()
     @UseGuards(JwtAuthGuard, PermissionsGuard)
     @RequirePermissions('maison_transit_requests.read')
-    @ApiBearerAuth()
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({
         summary: 'Lister toutes les demandes de création de maison de transit',
         description:
@@ -304,7 +304,7 @@ export class MaisonTransitRequestsController {
     @Get(':id')
     @UseGuards(JwtAuthGuard, PermissionsGuard)
     @RequirePermissions('maison_transit_requests.read')
-    @ApiBearerAuth()
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({
         summary: 'Récupérer une demande par son ID',
         description:

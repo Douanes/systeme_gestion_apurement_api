@@ -37,7 +37,7 @@ import { UserRole } from 'libs/dto/auth';
 import { ErrorResponseDto } from 'libs/dto/global/response.dto';
 
 @ApiTags('Utilisateurs')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('users')
 export class UsersController {
