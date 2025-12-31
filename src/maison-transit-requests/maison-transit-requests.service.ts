@@ -535,24 +535,65 @@ export class MaisonTransitRequestsService {
     private getViewableCloudinaryUrl(url: string): string {
         if (!url) return url;
 
-        // Extraire le public_id depuis l'URL Cloudinary
-        // Format: https://res.cloudinary.com/{cloud}/image/upload/v{version}/{public_id}.pdf
-        // Ou: https://res.cloudinary.com/{cloud}/raw/upload/{public_id}.pdf
-        const publicIdMatch = url.match(/\/(?:image|raw)\/upload\/(?:v\d+\/)?(.+)$/);
+        // Cas 1: Si c'est déjà juste un public_id (sans https://)
+        if (!url.startsWith('http')) {
+            // C'est déjà un public_id, on génère directement l'URL signée
+            try {
+                // Enlever l'extension .pdf si présente
+                const publicId = url.replace(/\.pdf$/i, '');
+                return this.cloudinaryService.generateSignedUrl(publicId, 3600);
+            } catch (error) {
+                this.logger.error(`Erreur lors de la génération de l'URL signée pour ${url}: ${error.message}`);
+                return url;
+            }
+        }
 
-        if (!publicIdMatch) {
-            this.logger.warn(`Impossible d'extraire le public_id de l'URL: ${url}`);
+        // Cas 2: URL complète Cloudinary - extraire le public_id
+        // Formats possibles:
+        // - https://res.cloudinary.com/{cloud}/raw/upload/{public_id}.pdf
+        // - https://res.cloudinary.com/{cloud}/raw/upload/v{version}/{public_id}.pdf
+        // - https://res.cloudinary.com/{cloud}/raw/authenticated/s--SIG--/v{version}/{public_id}.pdf
+
+        // Extraire tout ce qui vient après le dernier "upload/" ou le dernier "/"
+        const parts = url.split('/');
+        const uploadIndex = parts.lastIndexOf('upload');
+
+        if (uploadIndex === -1) {
+            // Essayer de trouver le public_id après 'authenticated'
+            const authIndex = parts.findIndex(p => p === 'authenticated');
+            if (authIndex !== -1) {
+                // Prendre tout après la signature (s--XXX--) et la version (vXXXX)
+                const remaining = parts.slice(authIndex + 1);
+                // Enlever signature et version
+                const filtered = remaining.filter(p => !p.startsWith('s--') && !p.match(/^v\d+$/));
+                const publicId = filtered.join('/').replace(/\.pdf$/i, '');
+
+                this.logger.log(`Public ID extrait (authenticated): ${publicId}`);
+
+                try {
+                    return this.cloudinaryService.generateSignedUrl(publicId, 3600);
+                } catch (error) {
+                    this.logger.error(`Erreur génération URL signée: ${error.message}`);
+                    return url;
+                }
+            }
+
+            this.logger.warn(`Impossible de trouver 'upload' ou 'authenticated' dans l'URL: ${url}`);
             return url;
         }
 
-        const publicId = publicIdMatch[1];
+        // Prendre tout après 'upload', enlever 'v{version}' si présent, et enlever l'extension
+        const afterUpload = parts.slice(uploadIndex + 1);
+        const filtered = afterUpload.filter(p => !p.match(/^v\d+$/)); // Enlever vXXXX
+        const publicId = filtered.join('/').replace(/\.pdf$/i, '');
 
-        // Générer une URL signée avec le CloudinaryService
+        this.logger.log(`Public ID extrait (upload): ${publicId}`);
+
         try {
-            return this.cloudinaryService.generateSignedUrl(publicId, 3600); // Expire dans 1 heure
+            return this.cloudinaryService.generateSignedUrl(publicId, 3600);
         } catch (error) {
             this.logger.error(`Erreur lors de la génération de l'URL signée: ${error.message}`);
-            return url; // Fallback sur l'URL originale en cas d'erreur
+            return url;
         }
     }
 }
