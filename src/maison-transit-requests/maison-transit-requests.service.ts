@@ -528,9 +528,12 @@ export class MaisonTransitRequestsService {
     }
 
     /**
-     * Obtenir une URL signée temporaire pour accéder à un fichier privé Cloudinary
+     * Obtenir une URL signée pour accéder à un fichier privé Cloudinary
      * Les fichiers sont stockés en mode 'authenticated' pour la sécurité
-     * Cette méthode génère une URL signée valide 1 heure (comme AWS S3 presigned URLs)
+     *
+     * IMPORTANT: Contrairement à AWS S3 presigned URLs, les URLs signées Cloudinary
+     * n'expirent PAS automatiquement. La sécurité vient du fait que seul le serveur
+     * avec l'API_SECRET peut générer ces URLs valides.
      */
     private getViewableCloudinaryUrl(url: string): string {
         if (!url) return url;
@@ -541,7 +544,7 @@ export class MaisonTransitRequestsService {
             try {
                 // Enlever l'extension .pdf si présente
                 const publicId = url.replace(/\.pdf$/i, '');
-                return this.cloudinaryService.generateSignedUrl(publicId, 3600);
+                return this.cloudinaryService.generateSignedUrl(publicId);
             } catch (error) {
                 this.logger.error(`Erreur lors de la génération de l'URL signée pour ${url}: ${error.message}`);
                 return url;
@@ -571,7 +574,7 @@ export class MaisonTransitRequestsService {
                 this.logger.log(`Public ID extrait (authenticated): ${publicId}`);
 
                 try {
-                    return this.cloudinaryService.generateSignedUrl(publicId, 3600);
+                    return this.cloudinaryService.generateSignedUrl(publicId);
                 } catch (error) {
                     this.logger.error(`Erreur génération URL signée: ${error.message}`);
                     return url;
@@ -590,7 +593,7 @@ export class MaisonTransitRequestsService {
         this.logger.log(`Public ID extrait (upload): ${publicId}`);
 
         try {
-            return this.cloudinaryService.generateSignedUrl(publicId, 3600);
+            return this.cloudinaryService.generateSignedUrl(publicId);
         } catch (error) {
             this.logger.error(`Erreur lors de la génération de l'URL signée: ${error.message}`);
             return url;

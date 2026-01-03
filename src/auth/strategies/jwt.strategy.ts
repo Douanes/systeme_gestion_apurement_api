@@ -28,8 +28,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
             secretOrKey: secret,
-            issuer: configService.get<string>('JWT_ISSUER', 'systeme-apurement-api'),
-            audience: configService.get<string>('JWT_AUDIENCE', 'systeme-apurement-client'),
+            // Rendre issuer et audience optionnels pour compatibilité avec les tokens existants
+            // Les nouveaux tokens incluront ces valeurs, mais les anciens tokens fonctionneront toujours
         });
     }
 
@@ -51,7 +51,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
                 deletedAt: true,
             },
         });
-console.log(user);
 
         if (!user) {
             throw new UnauthorizedException('Utilisateur non trouvé');

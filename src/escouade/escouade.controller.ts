@@ -80,13 +80,13 @@ export class EscouadeController {
     @ApiOperation({
         summary: 'Récupérer toutes les escouades',
         description:
-            'Récupère une liste paginée de toutes les escouades avec filtres optionnels',
+            'Récupère une liste paginée de toutes les escouades avec leurs chefs et adjoints',
     })
     @ApiQuery({ type: EscouadePaginationQueryDto })
     @ApiResponse({
         status: HttpStatus.OK,
         description: 'Liste des escouades récupérée avec succès',
-        type: PaginatedResponseDto<EscouadeResponseDto>,
+        type: PaginatedResponseDto<EscouadeWithRelationsDto>,
     })
     @ApiResponse({
         status: HttpStatus.UNAUTHORIZED,
@@ -95,7 +95,7 @@ export class EscouadeController {
     })
     async findAll(
         @Query() paginationQuery: EscouadePaginationQueryDto,
-    ): Promise<PaginatedResponseDto<EscouadeResponseDto>> {
+    ): Promise<PaginatedResponseDto<EscouadeWithRelationsDto>> {
         return this.escouadeService.findAll(paginationQuery);
     }
 
@@ -127,7 +127,7 @@ export class EscouadeController {
     })
     async findOne(
         @Param('id', ParseIntPipe) id: number,
-    ): Promise<EscouadeResponseDto | EscouadeWithRelationsDto> {
+    ): Promise<EscouadeWithRelationsDto> {
         return this.escouadeService.findOne(id);
     }
 

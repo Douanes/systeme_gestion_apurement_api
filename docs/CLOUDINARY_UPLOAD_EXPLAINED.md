@@ -275,37 +275,40 @@ Vous envoyez un paramètre à Cloudinary qui n'est pas inclus dans la signature.
    - Impossible d'accéder directement aux fichiers via leur URL
    - Toute tentative d'accès direct retourne 401 Unauthorized
 
-### Accès sécurisé (Presigned URLs)
+### Accès sécurisé (Signed URLs)
 
 1. **Génération d'URL signée**
    - Quand un utilisateur demande les documents, l'API génère une URL signée
    - L'URL contient une signature cryptographique unique
-   - L'URL expire automatiquement après 1 heure (comme AWS S3)
+   - ⚠️ **Différence importante avec AWS S3**: Les URLs signées Cloudinary `authenticated` n'expirent PAS automatiquement
+   - La sécurité vient du fait que seul le serveur avec `API_SECRET` peut générer ces URLs
+   - Pour révoquer l'accès, il faut supprimer le fichier ou le déplacer vers un autre public_id
 
 2. **Avantages**
    - ✅ Contrôle total: seule l'API peut générer les URLs d'accès
-   - ✅ Temporaire: les URLs expirent automatiquement
+   - ✅ Sécurisé: impossible de générer une URL valide sans l'API_SECRET
    - ✅ Traçable: chaque génération d'URL peut être loggée
-   - ✅ Révocable: si besoin, on peut supprimer le fichier de Cloudinary
-   - ✅ Pas de fuite: impossible de partager l'accès permanent au fichier
+   - ✅ Révocable: on peut supprimer le fichier de Cloudinary
+   - ⚠️ Les URLs ne sont PAS temporaires (pas d'expiration automatique comme AWS S3)
 
 3. **Comparaison avec AWS S3**
    ```javascript
-   // AWS S3 Presigned URL
+   // AWS S3 Presigned URL (expire après 1 heure)
    const url = s3.getSignedUrl('getObject', {
      Bucket: 'my-bucket',
      Key: 'document.pdf',
      Expires: 3600 // 1 heure
    });
 
-   // Cloudinary Signed URL (notre implémentation)
+   // Cloudinary Signed URL (ne expire PAS automatiquement)
    const url = cloudinaryService.generateSignedUrl(
-     'maison-transit-documents/REGISTRE_COMMERCE_...',
-     3600 // 1 heure
+     'maison-transit-documents/REGISTRE_COMMERCE_...'
    );
    ```
 
-   Les deux approches offrent le même niveau de sécurité!
+   **Différence importante**:
+   - AWS S3: URLs temporaires avec expiration automatique
+   - Cloudinary: URLs signées permanentes (jusqu'à suppression du fichier)
 
 ## 📝 Configuration requise
 

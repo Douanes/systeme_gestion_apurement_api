@@ -137,28 +137,48 @@ export class CloudinaryService {
 
     /**
      * Générer une URL signée pour accéder à un fichier privé
-     * Similaire aux presigned URLs d'AWS S3
-     * @param publicId - Le public_id du fichier dans Cloudinary
-     * @param expiresIn - Durée de validité en secondes (défaut: 1 heure)
-     * @returns URL signée temporaire pour accéder au fichier
+     *
+     * NOTE: Contrairement à AWS S3, les URLs signées Cloudinary 'authenticated'
+     * n'expirent pas automatiquement. La sécurité vient du fait que seul le serveur
+     * avec l'API_SECRET peut générer ces URLs. Pour révoquer l'accès, il faut
+     * supprimer le fichier ou le déplacer vers un autre public_id.
+     *
+     * @param publicId - Le public_id du fichier dans Cloudinary (sans extension)
+     * @returns URL signée pour accéder au fichier
      */
-    generateSignedUrl(publicId: string, expiresIn: number = 3600): string {
+    generateSignedUrl(publicId: string): string {
         const cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
+
         if (!cloudName) {
             throw new Error('CLOUDINARY_CLOUD_NAME is not configured');
         }
 
-        // Utiliser la méthode native de Cloudinary pour générer une URL signée
-        const signedUrl = cloudinary.url(publicId, {
-            sign_url: true,
-            type: 'authenticated', // Type 'authenticated' pour fichiers privés
-            resource_type: 'raw', // Pour les PDFs et documents
-            secure: true, // HTTPS
-            flags: 'attachment', // Force le téléchargement
-        });
+        // Enlever l'extension .pdf si présente
+        const cleanPublicId = publicId.replace(/\.pdf$/i, '');
 
-        this.logger.log(`URL signée générée pour ${publicId}, expire dans ${expiresIn}s`);
+        this.logger.log(`Génération URL signée pour: ${cleanPublicId}`);
 
-        return signedUrl;
+        // Utiliser cloudinary.url() mais désactiver les analytics
+        // Configuration pour éviter les paramètres indésirables
+        const originalAnalytics = (cloudinary.config() as any).analytics;
+        (cloudinary.config() as any).analytics = false;
+
+        try {
+            const signedUrl = cloudinary.url(cleanPublicId, {
+                sign_url: true,
+                type: 'authenticated',
+                resource_type: 'raw',
+                secure: true,
+                format: 'pdf',
+                flags: 'attachment',
+                version: false, // Pas de version automatique
+            });
+
+            this.logger.log(`URL signée générée: ${signedUrl}`);
+            return signedUrl;
+        } finally {
+            // Restaurer la configuration analytics
+            (cloudinary.config() as any).analytics = originalAnalytics;
+        }
     }
 }

@@ -33,34 +33,6 @@ export class StatisticsController {
         description:
             'Récupère les statistiques d\'apurement (apurés, non apurés, rejetés) avec filtres par période et bureau',
     })
-    @ApiQuery({
-        name: 'bureauSortieId',
-        required: false,
-        type: Number,
-        description: 'ID du bureau de sortie',
-        example: 1,
-    })
-    @ApiQuery({
-        name: 'dateDebut',
-        required: false,
-        type: String,
-        description: 'Date de début (format ISO)',
-        example: '2024-01-01',
-    })
-    @ApiQuery({
-        name: 'dateFin',
-        required: false,
-        type: String,
-        description: 'Date de fin (format ISO)',
-        example: '2024-12-31',
-    })
-    @ApiQuery({
-        name: 'period',
-        required: false,
-        enum: PeriodFilter,
-        description: 'Période prédéfinie',
-        example: PeriodFilter.THIS_MONTH,
-    })
     @ApiResponse({
         status: HttpStatus.OK,
         description: 'Statistiques d\'apurement récupérées avec succès',
@@ -95,27 +67,6 @@ export class StatisticsController {
         summary: 'Statistiques d\'apurement par bureau de sortie',
         description:
             'Récupère les statistiques d\'apurement groupées par bureau de sortie',
-    })
-    @ApiQuery({
-        name: 'dateDebut',
-        required: false,
-        type: String,
-        description: 'Date de début (format ISO)',
-        example: '2024-01-01',
-    })
-    @ApiQuery({
-        name: 'dateFin',
-        required: false,
-        type: String,
-        description: 'Date de fin (format ISO)',
-        example: '2024-12-31',
-    })
-    @ApiQuery({
-        name: 'period',
-        required: false,
-        enum: PeriodFilter,
-        description: 'Période prédéfinie',
-        example: PeriodFilter.THIS_MONTH,
     })
     @ApiResponse({
         status: HttpStatus.OK,
@@ -240,20 +191,6 @@ export class StatisticsController {
         summary: 'Vue d\'ensemble du dashboard',
         description:
             'Récupère un aperçu complet avec comparaison période précédente et top/bottom bureaux',
-    })
-    @ApiQuery({
-        name: 'bureauSortieId',
-        required: false,
-        type: Number,
-        description: 'ID du bureau de sortie',
-        example: 1,
-    })
-    @ApiQuery({
-        name: 'period',
-        required: false,
-        enum: PeriodFilter,
-        description: 'Période prédéfinie',
-        example: PeriodFilter.THIS_MONTH,
     })
     @ApiResponse({
         status: HttpStatus.OK,

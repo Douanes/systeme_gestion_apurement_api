@@ -36,6 +36,18 @@ export class EscouadeService {
     }
 
     /**
+     * Transform Prisma Escouade with relations to EscouadeWithRelationsDto
+     */
+    private toResponseDtoWithRelations(escouade: any): EscouadeWithRelationsDto {
+        return {
+            ...this.toResponseDto(escouade),
+            chef: escouade.chef || null,
+            adjoint: escouade.adjoint || null,
+            escouadeAgents: escouade.escouadeAgents || undefined,
+        };
+    }
+
+    /**
      * Créer une nouvelle escouade
      */
     async create(createEscouadeDto: CreateEscouadeDto): Promise<EscouadeResponseDto> {
@@ -84,7 +96,7 @@ export class EscouadeService {
      */
     async findAll(
         paginationQuery: EscouadePaginationQueryDto,
-    ): Promise<PaginatedResponseDto<EscouadeResponseDto>> {
+    ): Promise<PaginatedResponseDto<EscouadeWithRelationsDto>> {
         const {
             page = 1,
             limit = 10,
@@ -117,6 +129,10 @@ export class EscouadeService {
                 orderBy: {
                     [sortBy]: sortOrder,
                 },
+                include: {
+                    chef: true,
+                    adjoint: true,
+                },
             }),
             this.prisma.escouade.count({ where }),
         ]);
@@ -124,7 +140,7 @@ export class EscouadeService {
         const totalPages = Math.ceil(total / limit);
 
         return {
-            data: escouades.map((escouade) => this.toResponseDto(escouade)),
+            data: escouades.map((escouade) => this.toResponseDtoWithRelations(escouade)),
             meta: {
                 page,
                 limit,
@@ -139,7 +155,7 @@ export class EscouadeService {
     /**
      * Récupérer une escouade par ID
      */
-    async findOne(id: number): Promise<EscouadeResponseDto | EscouadeWithRelationsDto> {
+    async findOne(id: number): Promise<EscouadeWithRelationsDto> {
         const escouade = await this.prisma.escouade.findFirst({
             where: {
                 id,
@@ -160,12 +176,7 @@ export class EscouadeService {
             throw new NotFoundException(`Escouade avec l'ID ${id} non trouvée`);
         }
 
-        return {
-            ...this.toResponseDto(escouade),
-            chef: escouade.chef,
-            adjoint: escouade.adjoint,
-            escouadeAgents: escouade.escouadeAgents,
-        };
+        return this.toResponseDtoWithRelations(escouade);
     }
 
     /**
