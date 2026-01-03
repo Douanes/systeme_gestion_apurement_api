@@ -360,7 +360,7 @@ export class OrdreMissionService {
     }
 
     /**
-     * Mettre à jour un ordre
+     * Mettre à jour un ordre avec ses relations (déclarations, colis, etc.)
      */
     async update(
         id: number,
@@ -384,24 +384,142 @@ export class OrdreMissionService {
             }
         }
 
-        const ordreMission = await this.prisma.ordreMission.update({
-            where: { id },
-            data: {
-                number: updateOrdreMissionDto.number,
-                destination: updateOrdreMissionDto.destination,
-                itineraire: updateOrdreMissionDto.itineraire,
-                dateOrdre: updateOrdreMissionDto.dateOrdre
-                    ? new Date(updateOrdreMissionDto.dateOrdre)
-                    : undefined,
-                depositaireId: updateOrdreMissionDto.depositaireId,
-                maisonTransitId: updateOrdreMissionDto.maisonTransitId,
-                statut: updateOrdreMissionDto.statut as any as PrismaStatutOrdreMission,
-                statutApurement: updateOrdreMissionDto.statutApurement as any as PrismaStatutApurement,
-                ecouadeId: updateOrdreMissionDto.escouadeId,
-                agentEscorteurId: updateOrdreMissionDto.agentEscorteurId,
-                bureauSortieId: updateOrdreMissionDto.bureauSortieId,
-                observations: updateOrdreMissionDto.observations,
-            },
+        // Utiliser une transaction pour mettre à jour tout atomiquement
+        const ordreMission = await this.prisma.$transaction(async (tx) => {
+            // 1. Mettre à jour l'ordre de mission
+            const ordre = await tx.ordreMission.update({
+                where: { id },
+                data: {
+                    number: updateOrdreMissionDto.number,
+                    destination: updateOrdreMissionDto.destination,
+                    itineraire: updateOrdreMissionDto.itineraire,
+                    dateOrdre: updateOrdreMissionDto.dateOrdre
+                        ? new Date(updateOrdreMissionDto.dateOrdre)
+                        : undefined,
+                    depositaireId: updateOrdreMissionDto.depositaireId,
+                    maisonTransitId: updateOrdreMissionDto.maisonTransitId,
+                    statut: updateOrdreMissionDto.statut as any as PrismaStatutOrdreMission,
+                    statutApurement: updateOrdreMissionDto.statutApurement as any as PrismaStatutApurement,
+                    ecouadeId: updateOrdreMissionDto.escouadeId,
+                    agentEscorteurId: updateOrdreMissionDto.agentEscorteurId,
+                    bureauSortieId: updateOrdreMissionDto.bureauSortieId,
+                    observations: updateOrdreMissionDto.observations,
+                    updatedAt: new Date(),
+                },
+            });
+
+            // 2. Si des déclarations sont fournies, remplacer toutes les déclarations existantes
+            if (updateOrdreMissionDto.declarations !== undefined) {
+                // Supprimer toutes les anciennes déclarations (soft delete)
+                await tx.declaration.updateMany({
+                    where: { ordreMissionId: id },
+                    data: { deletedAt: new Date() },
+                });
+
+                // Créer les nouvelles déclarations
+                if (updateOrdreMissionDto.declarations.length > 0) {
+                    await tx.declaration.createMany({
+                        data: updateOrdreMissionDto.declarations.map((decl) => ({
+                            numeroDeclaration: decl.numeroDeclaration,
+                            dateDeclaration: new Date(decl.dateDeclaration),
+                            ordreMissionId: id,
+                            depositaireId: decl.depositaireId,
+                            maisonTransitId: decl.maisonTransitId,
+                            bureauSortieId: decl.bureauSortieId,
+                        })),
+                    });
+                }
+            }
+
+            // 3. Si des colis sont fournis, remplacer tous les colis existants
+            if (updateOrdreMissionDto.colis !== undefined) {
+                // Supprimer tous les anciens colis (soft delete)
+                await tx.colis.updateMany({
+                    where: { ordreMissionId: id },
+                    data: { deletedAt: new Date() },
+                });
+
+                // Créer les nouveaux colis
+                if (updateOrdreMissionDto.colis.length > 0) {
+                    await tx.colis.createMany({
+                        data: updateOrdreMissionDto.colis.map((coli) => ({
+                            ordreMissionId: id,
+                            natureMarchandise: coli.natureMarchandise,
+                            positionTarifaire: coli.positionTarifaire,
+                            poids: coli.poids,
+                            valeurDeclaree: coli.valeurDeclaree,
+                        })),
+                    });
+                }
+            }
+
+            // 4. Si des conteneurs sont fournis, remplacer tous les conteneurs existants
+            if (updateOrdreMissionDto.conteneurs !== undefined) {
+                // Supprimer tous les anciens conteneurs (soft delete)
+                await tx.conteneur.updateMany({
+                    where: { ordreMissionId: id },
+                    data: { deletedAt: new Date() },
+                });
+
+                // Créer les nouveaux conteneurs
+                if (updateOrdreMissionDto.conteneurs.length > 0) {
+                    await tx.conteneur.createMany({
+                        data: updateOrdreMissionDto.conteneurs.map((cont) => ({
+                            ordreMissionId: id,
+                            numConteneur: cont.numConteneur,
+                            driverName: cont.driverName,
+                            driverNationality: cont.driverNationality,
+                            phone: cont.phone,
+                        })),
+                    });
+                }
+            }
+
+            // 5. Si des camions sont fournis, remplacer tous les camions existants
+            if (updateOrdreMissionDto.camions !== undefined) {
+                // Supprimer tous les anciens camions (soft delete)
+                await tx.camion.updateMany({
+                    where: { ordreMissionId: id },
+                    data: { deletedAt: new Date() },
+                });
+
+                // Créer les nouveaux camions
+                if (updateOrdreMissionDto.camions.length > 0) {
+                    await tx.camion.createMany({
+                        data: updateOrdreMissionDto.camions.map((cam) => ({
+                            ordreMissionId: id,
+                            immatriculation: cam.immatriculation,
+                            driverName: cam.driverName,
+                            driverNationality: cam.driverNationality,
+                            phone: cam.phone,
+                        })),
+                    });
+                }
+            }
+
+            // 6. Si des voitures sont fournies, remplacer toutes les voitures existantes
+            if (updateOrdreMissionDto.voitures !== undefined) {
+                // Supprimer toutes les anciennes voitures (soft delete)
+                await tx.voiture.updateMany({
+                    where: { ordreMissionId: id },
+                    data: { deletedAt: new Date() },
+                });
+
+                // Créer les nouvelles voitures
+                if (updateOrdreMissionDto.voitures.length > 0) {
+                    await tx.voiture.createMany({
+                        data: updateOrdreMissionDto.voitures.map((voit) => ({
+                            ordreMissionId: id,
+                            chassis: voit.chassis,
+                            driverName: voit.driverName,
+                            driverNationality: voit.driverNationality,
+                            phone: voit.phone,
+                        })),
+                    });
+                }
+            }
+
+            return ordre;
         });
 
         return this.toResponseDto(ordreMission);
