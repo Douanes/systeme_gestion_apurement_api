@@ -17,6 +17,7 @@ import { ProfileService } from './profile/profile.service';
 import { ProfileController } from './profile/profile.controller';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { MaisonTransitRequestsModule } from './maison-transit-requests/maison-transit-requests.module';
+import { DepositaireModule } from './depositaire/depositaire.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { MaisonTransitRequestsModule } from './maison-transit-requests/maison-tr
     MaisonTransitModule,
     EscouadeModule,
     AgentModule,
+    DepositaireModule,
     OrdreMissionModule,
     StatisticsModule
   ],
