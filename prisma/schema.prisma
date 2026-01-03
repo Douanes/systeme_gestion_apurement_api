@@ -314,7 +314,7 @@ model Colis {
 model Camion {
   id                Int       @id @default(autoincrement())
   ordreMissionId    Int?      @map("ordre_mission_id")
-  immatriculation   String
+  immatriculation   String    @unique
   driverName        String?   @map("driver_name")
   driverNationality String?   @map("driver_nationality")
   phone             String?   @map("ip_address")
@@ -330,7 +330,7 @@ model Camion {
 model Conteneur {
   id                Int       @id @default(autoincrement())
   ordreMissionId    Int?      @map("ordre_mission_id")
-  numConteneur      String    @map("num_conteneur")
+  numConteneur      String    @unique @map("num_conteneur")
   driverName        String?   @map("driver_name")
   driverNationality String?   @map("driver_nationality")
   phone             String?   @map("ip_address")
@@ -346,7 +346,7 @@ model Conteneur {
 model Voiture {
   id                Int       @id @default(autoincrement())
   ordreMissionId    Int?      @map("ordre_mission_id")
-  chassis           String    @map("chassis")
+  chassis           String    @unique @map("chassis")
   driverName        String?   @map("driver_name")
   driverNationality String?   @map("driver_nationality")
   phone             String?   @map("ip_address")

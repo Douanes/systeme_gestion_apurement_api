@@ -408,25 +408,43 @@ export class OrdreMissionService {
                 },
             });
 
-            // 2. Si des déclarations sont fournies, remplacer toutes les déclarations existantes
+            // 2. Si des déclarations sont fournies, utiliser upsert pour chaque déclaration
             if (updateOrdreMissionDto.declarations !== undefined) {
-                // Supprimer toutes les anciennes déclarations (soft delete)
+                // D'abord, soft delete toutes les anciennes déclarations de cet ordre
                 await tx.declaration.updateMany({
-                    where: { ordreMissionId: id },
-                    data: { deletedAt: new Date() },
+                    where: {
+                        ordreMissionId: id,
+                        deletedAt: null,
+                    },
+                    data: {
+                        deletedAt: new Date(),
+                        ordreMissionId: null, // Détacher de l'ordre
+                    },
                 });
 
-                // Créer les nouvelles déclarations
-                if (updateOrdreMissionDto.declarations.length > 0) {
-                    await tx.declaration.createMany({
-                        data: updateOrdreMissionDto.declarations.map((decl) => ({
+                // Ensuite, upsert chaque déclaration (réutilise si existe, crée sinon)
+                for (const decl of updateOrdreMissionDto.declarations) {
+                    await tx.declaration.upsert({
+                        where: {
+                            numeroDeclaration: decl.numeroDeclaration,
+                        },
+                        update: {
+                            dateDeclaration: new Date(decl.dateDeclaration),
+                            ordreMissionId: id,
+                            depositaireId: decl.depositaireId,
+                            maisonTransitId: decl.maisonTransitId,
+                            bureauSortieId: decl.bureauSortieId,
+                            deletedAt: null, // Réactiver si elle était soft deleted
+                            updatedAt: new Date(),
+                        },
+                        create: {
                             numeroDeclaration: decl.numeroDeclaration,
                             dateDeclaration: new Date(decl.dateDeclaration),
                             ordreMissionId: id,
                             depositaireId: decl.depositaireId,
                             maisonTransitId: decl.maisonTransitId,
                             bureauSortieId: decl.bureauSortieId,
-                        })),
+                        },
                     });
                 }
             }
@@ -453,68 +471,119 @@ export class OrdreMissionService {
                 }
             }
 
-            // 4. Si des conteneurs sont fournis, remplacer tous les conteneurs existants
+            // 4. Si des conteneurs sont fournis, utiliser upsert pour chaque conteneur
             if (updateOrdreMissionDto.conteneurs !== undefined) {
-                // Supprimer tous les anciens conteneurs (soft delete)
+                // D'abord, soft delete tous les anciens conteneurs de cet ordre
                 await tx.conteneur.updateMany({
-                    where: { ordreMissionId: id },
-                    data: { deletedAt: new Date() },
+                    where: {
+                        ordreMissionId: id,
+                        deletedAt: null,
+                    },
+                    data: {
+                        deletedAt: new Date(),
+                        ordreMissionId: null, // Détacher de l'ordre
+                    },
                 });
 
-                // Créer les nouveaux conteneurs
-                if (updateOrdreMissionDto.conteneurs.length > 0) {
-                    await tx.conteneur.createMany({
-                        data: updateOrdreMissionDto.conteneurs.map((cont) => ({
+                // Ensuite, upsert chaque conteneur
+                for (const cont of updateOrdreMissionDto.conteneurs) {
+                    await tx.conteneur.upsert({
+                        where: {
+                            numConteneur: cont.numConteneur,
+                        },
+                        update: {
+                            ordreMissionId: id,
+                            driverName: cont.driverName,
+                            driverNationality: cont.driverNationality,
+                            phone: cont.phone,
+                            deletedAt: null, // Réactiver si soft deleted
+                            updatedAt: new Date(),
+                        },
+                        create: {
                             ordreMissionId: id,
                             numConteneur: cont.numConteneur,
                             driverName: cont.driverName,
                             driverNationality: cont.driverNationality,
                             phone: cont.phone,
-                        })),
+                        },
                     });
                 }
             }
 
-            // 5. Si des camions sont fournis, remplacer tous les camions existants
+            // 5. Si des camions sont fournis, utiliser upsert pour chaque camion
             if (updateOrdreMissionDto.camions !== undefined) {
-                // Supprimer tous les anciens camions (soft delete)
+                // D'abord, soft delete tous les anciens camions de cet ordre
                 await tx.camion.updateMany({
-                    where: { ordreMissionId: id },
-                    data: { deletedAt: new Date() },
+                    where: {
+                        ordreMissionId: id,
+                        deletedAt: null,
+                    },
+                    data: {
+                        deletedAt: new Date(),
+                        ordreMissionId: null, // Détacher de l'ordre
+                    },
                 });
 
-                // Créer les nouveaux camions
-                if (updateOrdreMissionDto.camions.length > 0) {
-                    await tx.camion.createMany({
-                        data: updateOrdreMissionDto.camions.map((cam) => ({
+                // Ensuite, upsert chaque camion
+                for (const cam of updateOrdreMissionDto.camions) {
+                    await tx.camion.upsert({
+                        where: {
+                            immatriculation: cam.immatriculation,
+                        },
+                        update: {
+                            ordreMissionId: id,
+                            driverName: cam.driverName,
+                            driverNationality: cam.driverNationality,
+                            phone: cam.phone,
+                            deletedAt: null, // Réactiver si soft deleted
+                            updatedAt: new Date(),
+                        },
+                        create: {
                             ordreMissionId: id,
                             immatriculation: cam.immatriculation,
                             driverName: cam.driverName,
                             driverNationality: cam.driverNationality,
                             phone: cam.phone,
-                        })),
+                        },
                     });
                 }
             }
 
-            // 6. Si des voitures sont fournies, remplacer toutes les voitures existantes
+            // 6. Si des voitures sont fournies, utiliser upsert pour chaque voiture
             if (updateOrdreMissionDto.voitures !== undefined) {
-                // Supprimer toutes les anciennes voitures (soft delete)
+                // D'abord, soft delete toutes les anciennes voitures de cet ordre
                 await tx.voiture.updateMany({
-                    where: { ordreMissionId: id },
-                    data: { deletedAt: new Date() },
+                    where: {
+                        ordreMissionId: id,
+                        deletedAt: null,
+                    },
+                    data: {
+                        deletedAt: new Date(),
+                        ordreMissionId: null, // Détacher de l'ordre
+                    },
                 });
 
-                // Créer les nouvelles voitures
-                if (updateOrdreMissionDto.voitures.length > 0) {
-                    await tx.voiture.createMany({
-                        data: updateOrdreMissionDto.voitures.map((voit) => ({
+                // Ensuite, upsert chaque voiture
+                for (const voit of updateOrdreMissionDto.voitures) {
+                    await tx.voiture.upsert({
+                        where: {
+                            chassis: voit.chassis,
+                        },
+                        update: {
+                            ordreMissionId: id,
+                            driverName: voit.driverName,
+                            driverNationality: voit.driverNationality,
+                            phone: voit.phone,
+                            deletedAt: null, // Réactiver si soft deleted
+                            updatedAt: new Date(),
+                        },
+                        create: {
                             ordreMissionId: id,
                             chassis: voit.chassis,
                             driverName: voit.driverName,
                             driverNationality: voit.driverNationality,
                             phone: voit.phone,
-                        })),
+                        },
                     });
                 }
             }
