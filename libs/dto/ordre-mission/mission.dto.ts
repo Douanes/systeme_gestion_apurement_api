@@ -30,7 +30,7 @@ export enum StatutApurement {
 // Nested DTOs - CREATE new entities
 export class CreateNestedDeclarationDto {
     @ApiProperty({
-        description: 'Numéro de déclaration unique',
+        description: 'Numéro de déclaration',
         example: 'DECL-2024-001',
     })
     @IsString()
@@ -44,6 +44,36 @@ export class CreateNestedDeclarationDto {
     @IsDateString()
     @IsNotEmpty()
     dateDeclaration: string;
+
+    @ApiProperty({
+        description: 'Nombre total de colis dans la déclaration complète',
+        example: 500,
+    })
+    @IsInt()
+    @IsNotEmpty()
+    nbreColisTotal: number;
+
+    @ApiProperty({
+        description: 'Poids total de la déclaration complète en tonnes',
+        example: 500.50,
+    })
+    @IsNotEmpty()
+    poidsTotal: number;
+
+    @ApiProperty({
+        description: 'Nombre de colis pour cette parcelle (dans cet ordre de mission)',
+        example: 100,
+    })
+    @IsInt()
+    @IsNotEmpty()
+    nbreColisParcelle: number;
+
+    @ApiProperty({
+        description: 'Poids pour cette parcelle (dans cet ordre de mission) en tonnes',
+        example: 100.00,
+    })
+    @IsNotEmpty()
+    poidsParcelle: number;
 
     @ApiPropertyOptional({
         description: 'ID du dépositaire',
@@ -72,6 +102,14 @@ export class CreateNestedDeclarationDto {
 
 export class CreateNestedColisDto {
     @ApiProperty({
+        description: 'Numéro de la déclaration à laquelle ce colis appartient',
+        example: 'DECL-2024-001',
+    })
+    @IsString()
+    @IsNotEmpty()
+    numeroDeclaration: string;
+
+    @ApiProperty({
         description: 'Nature de la marchandise',
         example: 'Électronique - Ordinateurs portables',
     })
@@ -86,6 +124,14 @@ export class CreateNestedColisDto {
     @IsOptional()
     @IsInt()
     positionTarifaire?: number;
+
+    @ApiPropertyOptional({
+        description: 'Nombre de colis',
+        example: 10,
+    })
+    @IsOptional()
+    @IsInt()
+    nbreColis?: number;
 
     @ApiPropertyOptional({
         description: 'Poids en kg',

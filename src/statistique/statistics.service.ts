@@ -446,30 +446,48 @@ export class StatisticsService {
 
         const limit = query.limit || 20;
 
-        // Construire le filtre
+        // Construire le filtre pour les colis via declaration -> ordreMissionDeclaration -> ordreMission
         const where: any = {
             deletedAt: null,
-            ordreMission: {
-                deletedAt: null,
-                dateOrdre: {
-                    gte: dateDebut,
-                    lte: dateFin,
+            declaration: {
+                ordreMissions: {
+                    some: {
+                        deletedAt: null,
+                        ordreMission: {
+                            deletedAt: null,
+                            dateOrdre: {
+                                gte: dateDebut,
+                                lte: dateFin,
+                            },
+                        },
+                    },
                 },
             },
         };
 
         if (query.bureauSortieId) {
-            where.ordreMission.bureauSortieId = query.bureauSortieId;
+            where.declaration.ordreMissions.some.ordreMission.bureauSortieId =
+                query.bureauSortieId;
         }
 
-        // Récupérer tous les colis dans la période
+        // Récupérer tous les colis dans la période avec leurs ordres de mission
         const colis = await this.prisma.colis.findMany({
             where,
             select: {
                 natureMarchandise: true,
                 poids: true,
                 valeurDeclaree: true,
-                ordreMissionId: true,
+                nbreColis: true,
+                declaration: {
+                    select: {
+                        ordreMissions: {
+                            where: { deletedAt: null },
+                            select: {
+                                ordreMissionId: true,
+                            },
+                        },
+                    },
+                },
             },
         });
 
@@ -493,8 +511,13 @@ export class StatisticsService {
             }
 
             const stats = grouped.get(nature);
-            stats.totalColis++;
-            stats.ordreIds.add(coli.ordreMissionId);
+            const nbreColis = coli.nbreColis || 1;
+            stats.totalColis += nbreColis;
+
+            // Ajouter tous les ordres de mission liés à cette déclaration
+            coli.declaration?.ordreMissions?.forEach((om) => {
+                stats.ordreIds.add(om.ordreMissionId);
+            });
 
             if (coli.poids) {
                 const poids = coli.poids.toNumber();
@@ -631,32 +654,50 @@ export class StatisticsService {
             ? new Date(query.dateFin)
             : this.calculatePeriodDates(PeriodFilter.THIS_YEAR).fin;
 
-        // Construire le filtre
+        // Construire le filtre via declaration -> ordreMissionDeclaration -> ordreMission
         const where: any = {
             deletedAt: null,
-            ordreMission: {
-                deletedAt: null,
-                dateOrdre: {
-                    gte: dateDebut,
-                    lte: dateFin,
+            declaration: {
+                ordreMissions: {
+                    some: {
+                        deletedAt: null,
+                        ordreMission: {
+                            deletedAt: null,
+                            dateOrdre: {
+                                gte: dateDebut,
+                                lte: dateFin,
+                            },
+                        },
+                    },
                 },
             },
         };
 
         if (query.bureauSortieId) {
-            where.ordreMission.bureauSortieId = query.bureauSortieId;
+            where.declaration.ordreMissions.some.ordreMission.bureauSortieId =
+                query.bureauSortieId;
         }
 
-        // Récupérer les colis avec date d'ordre
+        // Récupérer les colis avec date d'ordre via la déclaration
         const colis = await this.prisma.colis.findMany({
             where,
             select: {
                 natureMarchandise: true,
                 poids: true,
                 valeurDeclaree: true,
-                ordreMission: {
+                nbreColis: true,
+                declaration: {
                     select: {
-                        dateOrdre: true,
+                        ordreMissions: {
+                            where: { deletedAt: null },
+                            select: {
+                                ordreMission: {
+                                    select: {
+                                        dateOrdre: true,
+                                    },
+                                },
+                            },
+                        },
                     },
                 },
             },
@@ -666,7 +707,8 @@ export class StatisticsService {
         const marchandiseCounts = new Map<string, number>();
         colis.forEach((coli) => {
             const count = marchandiseCounts.get(coli.natureMarchandise) || 0;
-            marchandiseCounts.set(coli.natureMarchandise, count + 1);
+            const nbreColis = coli.nbreColis || 1;
+            marchandiseCounts.set(coli.natureMarchandise, count + nbreColis);
         });
 
         const topMarchandises = Array.from(marchandiseCounts.entries())
@@ -680,10 +722,12 @@ export class StatisticsService {
         colis
             .filter((coli) => topMarchandises.includes(coli.natureMarchandise))
             .forEach((coli) => {
-                if (!coli.ordreMission?.dateOrdre) return;
+                // Utiliser la date du premier ordre de mission lié
+                const firstOrder = coli.declaration?.ordreMissions?.[0];
+                if (!firstOrder?.ordreMission?.dateOrdre) return;
 
                 let periodKey: string;
-                const date = new Date(coli.ordreMission.dateOrdre);
+                const date = new Date(firstOrder.ordreMission.dateOrdre);
 
                 switch (groupBy) {
                     case 'day':
