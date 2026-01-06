@@ -355,18 +355,30 @@ export class CreateOrdreMissionDto {
     observations?: string;
 
     @ApiPropertyOptional({
-        description: 'Liste des déclarations à créer',
+        description: 'Liste des déclarations à créer ou ajouter (avec parcelles). Une même déclaration peut être répartie sur plusieurs ordres de mission.',
         type: [CreateNestedDeclarationDto],
         example: [
             {
                 numeroDeclaration: 'DECL-2024-001',
                 dateDeclaration: '2024-01-15',
+                nbreColisTotal: 500,
+                poidsTotal: 500.50,
+                nbreColisParcelle: 100,
+                poidsParcelle: 100.00,
                 depositaireId: 1,
+                maisonTransitId: 1,
+                bureauSortieId: 1,
             },
             {
                 numeroDeclaration: 'DECL-2024-002',
                 dateDeclaration: '2024-01-15',
+                nbreColisTotal: 300,
+                poidsTotal: 250.75,
+                nbreColisParcelle: 300,
+                poidsParcelle: 250.75,
                 depositaireId: 1,
+                maisonTransitId: 1,
+                bureauSortieId: 1,
             },
         ],
     })
@@ -377,18 +389,31 @@ export class CreateOrdreMissionDto {
     declarations?: CreateNestedDeclarationDto[];
 
     @ApiPropertyOptional({
-        description: 'Liste des colis à créer',
+        description: 'Liste des colis à créer. IMPORTANT: Chaque colis doit spécifier le numeroDeclaration auquel il appartient.',
         type: [CreateNestedColisDto],
         example: [
             {
-                natureMarchandise: 'Électronique - Ordinateurs',
+                numeroDeclaration: 'DECL-2024-001',
+                natureMarchandise: 'Électronique - Ordinateurs portables',
                 positionTarifaire: 847130,
+                nbreColis: 50,
                 poids: 250.5,
                 valeurDeclaree: 5000000,
             },
             {
+                numeroDeclaration: 'DECL-2024-001',
+                natureMarchandise: 'Électronique - Smartphones',
+                positionTarifaire: 851712,
+                nbreColis: 50,
+                poids: 50.0,
+                valeurDeclaree: 3000000,
+            },
+            {
+                numeroDeclaration: 'DECL-2024-002',
                 natureMarchandise: 'Textile - Vêtements',
-                poids: 100.0,
+                positionTarifaire: 620342,
+                nbreColis: 300,
+                poids: 250.75,
                 valeurDeclaree: 1500000,
             },
         ],
@@ -658,7 +683,7 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
     } | null;
 
     @ApiPropertyOptional({
-        description: 'Déclarations',
+        description: 'Déclarations avec informations sur les parcelles',
         type: 'array',
         isArray: true,
         example: [
@@ -667,6 +692,23 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
                 numeroDeclaration: 'DECL-2024-001',
                 dateDeclaration: '2024-01-15',
                 statutApurement: 'NON_APURE',
+                nbreColisTotal: 500,
+                poidsTotal: 500.50,
+                nbreColisRestant: 400,
+                poidsRestant: 400.50,
+                parcelle: {
+                    nbreColisParcelle: 100,
+                    poidsParcelle: 100.00,
+                },
+                colis: [
+                    {
+                        id: 1,
+                        natureMarchandise: 'Électronique',
+                        nbreColis: 50,
+                        poids: 50.25,
+                        valeurDeclaree: 2500000,
+                    },
+                ],
             },
         ],
     })
@@ -674,27 +716,23 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
         id: number;
         numeroDeclaration: string;
         dateDeclaration: Date;
-        statutApurement?: string | null;  // Changed to allow null
-    }>;
-
-    @ApiPropertyOptional({
-        description: 'Colis',
-        type: 'array',
-        isArray: true,
-        example: [
-            {
-                id: 1,
-                natureMarchandise: 'Électronique',
-                poids: 250.5,
-                valeurDeclaree: 5000000,
-            },
-        ],
-    })
-    colis?: Array<{
-        id: number;
-        natureMarchandise: string;
-        poids?: number | null;  // Changed to allow null
-        valeurDeclaree?: number | null;  // Changed to allow null
+        statutApurement?: string | null;
+        nbreColisTotal: number;
+        poidsTotal: number;
+        nbreColisRestant: number;
+        poidsRestant: number;
+        parcelle: {
+            nbreColisParcelle: number;
+            poidsParcelle: number;
+        };
+        colis?: Array<{
+            id: number;
+            natureMarchandise: string;
+            nbreColis?: number | null;
+            poids?: number | null;
+            valeurDeclaree?: number | null;
+            positionTarifaire?: number | null;
+        }>;
     }>;
 
     @ApiPropertyOptional({

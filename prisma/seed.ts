@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { seedPermissions } from './seeds/permissions.seed';
+import { seedAdminUser } from './seeds/admin-user.seed';
 
 const prisma = new PrismaClient();
 
@@ -24,8 +25,19 @@ async function main() {
     console.log(`   Permissions: ${permissionResults.permissions.created} created, ${permissionResults.permissions.updated} updated, ${permissionResults.permissions.skipped} skipped`);
     console.log(`   Role Permissions: ${permissionResults.rolePermissions.created} created, ${permissionResults.rolePermissions.updated} updated, ${permissionResults.rolePermissions.skipped} skipped`);
 
-    // Ajouter ici d'autres seeders si nécessaire
-    // await seedOtherData();
+    // Seed de l'utilisateur admin (LOCAL ONLY)
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('👤 SEEDING ADMIN USER (LOCAL ONLY)');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+    const adminResults = await seedAdminUser();
+
+    console.log('\n📊 Admin User Seed Summary:');
+    console.log(`   Created: ${adminResults.created}`);
+    console.log(`   Skipped: ${adminResults.skipped}`);
+    if (adminResults.credentials) {
+      console.log(`   Status: ${adminResults.message}`);
+    }
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
 
