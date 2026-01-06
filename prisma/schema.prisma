@@ -78,19 +78,19 @@ model User {
   lastLogin       DateTime? @map("last_login")
   deletedAt       DateTime? @map("deleted_at")
 
-  declarations            Declaration[]
-  colis                   Colis[]
-  maisonTransitsOwned     MaisonTransit[]          @relation("MaisonTransitResponsable") // Garde pour compatibilité avec responsableId
-  maisonTransits          UserMaisonTransit[]      // Nouvelle relation Many-to-Many
-  ordreMissions           OrdreMission[]
-  auditLogs               AuditLog[]
-  emailVerifications      EmailVerification[]
-  activationTokens        AccountActivationToken[] // Tokens d'activation
-  passwordResetTokens     PasswordResetToken[]     // Tokens de réinitialisation de mot de passe
-  agent                   Agent?
-  userPermissions         UserPermission[]         // Permissions personnalisées
-  maisonTransitRequests   MaisonTransitRequest[]   @relation("RequestCreator")
-  reviewedRequests        MaisonTransitRequest[]   @relation("RequestReviewer")
+  declarations          Declaration[]
+  colis                 Colis[]
+  maisonTransitsOwned   MaisonTransit[]          @relation("MaisonTransitResponsable") // Garde pour compatibilité avec responsableId
+  maisonTransits        UserMaisonTransit[] // Nouvelle relation Many-to-Many
+  ordreMissions         OrdreMission[]
+  auditLogs             AuditLog[]
+  emailVerifications    EmailVerification[]
+  activationTokens      AccountActivationToken[] // Tokens d'activation
+  passwordResetTokens   PasswordResetToken[] // Tokens de réinitialisation de mot de passe
+  agent                 Agent?
+  userPermissions       UserPermission[] // Permissions personnalisées
+  maisonTransitRequests MaisonTransitRequest[]   @relation("RequestCreator")
+  reviewedRequests      MaisonTransitRequest[]   @relation("RequestReviewer")
 
   @@map("users")
 }
@@ -197,12 +197,12 @@ model MaisonTransit {
   updatedAt     DateTime  @updatedAt @map("updated_at")
   deletedAt     DateTime? @map("deleted_at")
 
-  responsable       User?                     @relation("MaisonTransitResponsable", fields: [responsableId], references: [id])
-  users             UserMaisonTransit[]       // Nouvelle relation Many-to-Many
-  invitations       AccountActivationToken[]  // Invitations pour staff
-  depositaires      Depositaire[]
-  declarations      Declaration[]
-  ordreMissions     OrdreMission[]
+  responsable   User?                    @relation("MaisonTransitResponsable", fields: [responsableId], references: [id])
+  users         UserMaisonTransit[] // Nouvelle relation Many-to-Many
+  invitations   AccountActivationToken[] // Invitations pour staff
+  depositaires  Depositaire[]
+  declarations  Declaration[]
+  ordreMissions OrdreMission[]
 
   @@map("maisons_transits")
 }
@@ -226,19 +226,38 @@ model OrdreMission {
   updatedAt        DateTime           @updatedAt @map("updated_at")
   deletedAt        DateTime?          @map("deleted_at")
 
-  depositaire    Depositaire?   @relation(fields: [depositaireId], references: [id], onDelete: SetNull)
-  createdBy      User?          @relation(fields: [createdById], references: [id])
-  agentEscorteur Agent?         @relation(fields: [agentEscorteurId], references: [id], onDelete: SetNull)
-  bureauSortie   BureauSortie?  @relation(fields: [bureauSortieId], references: [id], onDelete: SetNull)
-  maisonTransit  MaisonTransit? @relation(fields: [maisonTransitId], references: [id], onDelete: SetNull)
-  ecouade        Escouade?      @relation(fields: [ecouadeId], references: [id], onDelete: SetNull)
-  declarations   Declaration[]
-  colis          Colis[]
+  depositaire    Depositaire?              @relation(fields: [depositaireId], references: [id], onDelete: SetNull)
+  createdBy      User?                     @relation(fields: [createdById], references: [id])
+  agentEscorteur Agent?                    @relation(fields: [agentEscorteurId], references: [id], onDelete: SetNull)
+  bureauSortie   BureauSortie?             @relation(fields: [bureauSortieId], references: [id], onDelete: SetNull)
+  maisonTransit  MaisonTransit?            @relation(fields: [maisonTransitId], references: [id], onDelete: SetNull)
+  ecouade        Escouade?                 @relation(fields: [ecouadeId], references: [id], onDelete: SetNull)
+  declarations   OrdreMissionDeclaration[]
   camions        Camion[]
   conteneurs     Conteneur[]
   voitures       Voiture[]
 
   @@map("ordres_missions")
+}
+
+model OrdreMissionDeclaration {
+  id             Int @id @default(autoincrement())
+  ordreMissionId Int @map("ordre_mission_id")
+  declarationId  Int @map("declaration_id")
+
+  // Quantités pour cette parcelle spécifique
+  nbreColisParcelle Int     @map("nbre_colis_parcelle")
+  poidsParcelle     Decimal @map("poids_parcelle") @db.Decimal(12, 2)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  ordreMission OrdreMission @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
+  declaration  Declaration  @relation(fields: [declarationId], references: [id], onDelete: Cascade)
+
+  @@unique([ordreMissionId, declarationId])
+  @@map("ordre_mission_declarations")
 }
 
 model Depositaire {
@@ -263,16 +282,24 @@ model Depositaire {
 }
 
 model Declaration {
-  id                Int              @id @default(autoincrement())
-  numeroDeclaration String           @unique @map("numero_declaration") @db.VarChar(50)
-  dateDeclaration   DateTime         @map("date_declaration") @db.Date
-  ordreMissionId    Int?             @map("ordre_mission_id")
-  statutApurement   StatutApurement? @default(NON_APURE) @map("statut_apurement")
-  dateApurement     DateTime?        @map("date_apurement") @db.Date
-  motifRejet        String?          @map("motif_rejet") @db.Text
-  bureauSortieId    Int?
-  maisonTransitId   Int?
-  depositaireId     Int?
+  id                Int      @id @default(autoincrement())
+  numeroDeclaration String   @map("numero_declaration") @db.VarChar(50)
+  dateDeclaration   DateTime @map("date_declaration") @db.Date
+
+  // Totaux de la déclaration originale
+  nbreColisTotal Int     @map("nbre_colis_total")
+  poidsTotal     Decimal @map("poids_total") @db.Decimal(12, 2)
+
+  // Reste à livrer (mis à jour après chaque parcelle)
+  nbreColisRestant Int     @default(0) @map("nbre_colis_restant")
+  poidsRestant     Decimal @default(0) @map("poids_restant") @db.Decimal(12, 2)
+
+  statutApurement StatutApurement? @default(NON_APURE) @map("statut_apurement")
+  dateApurement   DateTime?        @map("date_apurement") @db.Date
+  motifRejet      String?          @map("motif_rejet") @db.Text
+  bureauSortieId  Int?
+  maisonTransitId Int?
+  depositaireId   Int?
 
   createdById Int?      @map("created_by")
   updatedById Int?      @map("updated_by")
@@ -280,22 +307,24 @@ model Declaration {
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
 
-  ordreMission  OrdreMission?  @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
-  createdBy     User?          @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  bureauSortie  BureauSortie?  @relation(fields: [bureauSortieId], references: [id])
-  maisonTransit MaisonTransit? @relation(fields: [maisonTransitId], references: [id])
-  depositaire   Depositaire?   @relation(fields: [depositaireId], references: [id])
-  agent         Agent?         @relation(fields: [agentId], references: [id])
+  ordreMissions OrdreMissionDeclaration[]
+  createdBy     User?                     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  bureauSortie  BureauSortie?             @relation(fields: [bureauSortieId], references: [id])
+  maisonTransit MaisonTransit?            @relation(fields: [maisonTransitId], references: [id])
+  depositaire   Depositaire?              @relation(fields: [depositaireId], references: [id])
+  agent         Agent?                    @relation(fields: [agentId], references: [id])
   agentId       Int?
+  colis         Colis[]
 
   @@map("declarations")
 }
 
 model Colis {
   id                Int      @id @default(autoincrement())
-  ordreMissionId    Int?     @map("ordre_mission_id")
+  declarationId     Int?     @map("declaration_id")
   natureMarchandise String   @map("nature_marchandise") @db.Text
   positionTarifaire Int?     @map("position_tarifaire")
+  nbreColis         Int?     @map("nbre_colis")
   poids             Decimal? @map("poids") @db.Decimal(12, 2)
   valeurDeclaree    Decimal? @map("valeur_declaree") @db.Decimal(15, 2)
 
@@ -305,8 +334,8 @@ model Colis {
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
 
-  ordreMission OrdreMission? @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
-  createdBy    User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  declaration Declaration? @relation(fields: [declarationId], references: [id], onDelete: Cascade)
+  createdBy   User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   @@map("colis")
 }
@@ -504,28 +533,28 @@ model UserPermission {
 }
 
 model MaisonTransitRequest {
-  id                Int           @id @default(autoincrement())
-  email             String        @db.VarChar(255)
-  companyName       String        @map("company_name") @db.VarChar(255)
-  phone             String?       @db.VarChar(20)
-  address           String?       @db.Text
-  ninea             String?       @db.VarChar(100)
-  registreCommerce  String?       @map("registre_commerce") @db.VarChar(100)
-  status            RequestStatus @default(EN_ATTENTE)
-  invitationToken   String        @unique @map("invitation_token") @db.VarChar(255)
-  tokenExpiresAt    DateTime      @map("token_expires_at")
-  invitedById       Int           @map("invited_by") // Admin ou Agent qui a invité
-  reviewedById      Int?          @map("reviewed_by") // Admin qui a validé/rejeté
-  reviewedAt        DateTime?     @map("reviewed_at")
-  rejectionReason   String?       @map("rejection_reason") @db.Text
-  activatedAt       DateTime?     @map("activated_at")
-  createdAt         DateTime      @default(now()) @map("created_at")
-  updatedAt         DateTime      @updatedAt @map("updated_at")
-  deletedAt         DateTime?     @map("deleted_at")
+  id               Int           @id @default(autoincrement())
+  email            String        @db.VarChar(255)
+  companyName      String        @map("company_name") @db.VarChar(255)
+  phone            String?       @db.VarChar(20)
+  address          String?       @db.Text
+  ninea            String?       @db.VarChar(100)
+  registreCommerce String?       @map("registre_commerce") @db.VarChar(100)
+  status           RequestStatus @default(EN_ATTENTE)
+  invitationToken  String        @unique @map("invitation_token") @db.VarChar(255)
+  tokenExpiresAt   DateTime      @map("token_expires_at")
+  invitedById      Int           @map("invited_by") // Admin ou Agent qui a invité
+  reviewedById     Int?          @map("reviewed_by") // Admin qui a validé/rejeté
+  reviewedAt       DateTime?     @map("reviewed_at")
+  rejectionReason  String?       @map("rejection_reason") @db.Text
+  activatedAt      DateTime?     @map("activated_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+  deletedAt        DateTime?     @map("deleted_at")
 
-  invitedBy User  @relation("RequestCreator", fields: [invitedById], references: [id], onDelete: Restrict)
-  reviewedBy User? @relation("RequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
-  documents RequestDocument[]
+  invitedBy  User              @relation("RequestCreator", fields: [invitedById], references: [id], onDelete: Restrict)
+  reviewedBy User?             @relation("RequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  documents  RequestDocument[]
 
   @@index([email])
   @@index([invitationToken])
@@ -535,17 +564,17 @@ model MaisonTransitRequest {
 }
 
 model RequestDocument {
-  id          Int          @id @default(autoincrement())
-  requestId   Int          @map("request_id")
-  type        DocumentType
-  fileName    String       @map("file_name") @db.VarChar(255)
-  fileUrl     String       @map("file_url") @db.Text
-  fileSize    Int?         @map("file_size") // En bytes
-  mimeType    String?      @map("mime_type") @db.VarChar(100)
-  cloudinaryId String?     @map("cloudinary_id") @db.VarChar(255) // Pour pouvoir supprimer le fichier si besoin
-  uploadedAt  DateTime     @default(now()) @map("uploaded_at")
-  createdAt   DateTime     @default(now()) @map("created_at")
-  deletedAt   DateTime?    @map("deleted_at")
+  id           Int          @id @default(autoincrement())
+  requestId    Int          @map("request_id")
+  type         DocumentType
+  fileName     String       @map("file_name") @db.VarChar(255)
+  fileUrl      String       @map("file_url") @db.Text
+  fileSize     Int?         @map("file_size") // En bytes
+  mimeType     String?      @map("mime_type") @db.VarChar(100)
+  cloudinaryId String?      @map("cloudinary_id") @db.VarChar(255) // Pour pouvoir supprimer le fichier si besoin
+  uploadedAt   DateTime     @default(now()) @map("uploaded_at")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  deletedAt    DateTime?    @map("deleted_at")
 
   request MaisonTransitRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
 
