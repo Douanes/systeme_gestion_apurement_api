@@ -8,14 +8,10 @@ import {
     IsOptional,
     Matches,
 } from 'class-validator';
+import { UserRole } from '@prisma/client';
 
-export enum UserRole {
-    ADMIN = 'ADMIN',
-    AGENT = 'AGENT',
-    SUPERVISEUR = 'SUPERVISEUR',
-    TRANSITAIRE = 'TRANSITAIRE',
-    DECLARANT = 'DECLARANT',
-}
+// Re-export UserRole from Prisma for convenience
+export { UserRole };
 
 /**
  * DTO pour l'inscription d'une maison de transit

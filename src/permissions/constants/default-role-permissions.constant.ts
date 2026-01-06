@@ -1,4 +1,4 @@
-import { UserRole } from 'libs/dto/auth';
+import { UserRole } from '@prisma/client';
 import { PERMISSIONS } from './permissions.constant';
 
 /**
