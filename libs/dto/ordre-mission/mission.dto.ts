@@ -30,7 +30,7 @@ export enum StatutApurement {
 // Nested DTOs - CREATE new entities
 export class CreateNestedDeclarationDto {
     @ApiProperty({
-        description: 'Numéro de déclaration',
+        description: 'Numéro de déclaration (peut être une nouvelle déclaration ou une déclaration existante)',
         example: 'DECL-2024-001',
     })
     @IsString()
@@ -44,36 +44,6 @@ export class CreateNestedDeclarationDto {
     @IsDateString()
     @IsNotEmpty()
     dateDeclaration: string;
-
-    @ApiProperty({
-        description: 'Nombre total de colis dans la déclaration complète',
-        example: 500,
-    })
-    @IsInt()
-    @IsNotEmpty()
-    nbreColisTotal: number;
-
-    @ApiProperty({
-        description: 'Poids total de la déclaration complète en tonnes',
-        example: 500.50,
-    })
-    @IsNotEmpty()
-    poidsTotal: number;
-
-    @ApiProperty({
-        description: 'Nombre de colis pour cette parcelle (dans cet ordre de mission)',
-        example: 100,
-    })
-    @IsInt()
-    @IsNotEmpty()
-    nbreColisParcelle: number;
-
-    @ApiProperty({
-        description: 'Poids pour cette parcelle (dans cet ordre de mission) en tonnes',
-        example: 100.00,
-    })
-    @IsNotEmpty()
-    poidsParcelle: number;
 
     @ApiPropertyOptional({
         description: 'ID du dépositaire',
@@ -102,7 +72,7 @@ export class CreateNestedDeclarationDto {
 
 export class CreateNestedColisDto {
     @ApiProperty({
-        description: 'Numéro de la déclaration à laquelle ce colis appartient',
+        description: 'Numéro de la déclaration à laquelle cette ligne de marchandise appartient',
         example: 'DECL-2024-001',
     })
     @IsString()
@@ -126,24 +96,24 @@ export class CreateNestedColisDto {
     positionTarifaire?: number;
 
     @ApiPropertyOptional({
-        description: 'Nombre de colis',
-        example: 10,
+        description: 'Nombre d\'unités de cette marchandise dans cette parcelle (ex: 20 ordinateurs)',
+        example: 20,
     })
     @IsOptional()
     @IsInt()
     nbreColis?: number;
 
     @ApiPropertyOptional({
-        description: 'Poids en kg',
-        example: 250.50,
+        description: 'Poids total de cette ligne en kg (ex: 25kg pour 20 ordinateurs)',
+        example: 25.0,
     })
     @IsOptional()
     @Type(() => Number)
     poids?: number;
 
     @ApiPropertyOptional({
-        description: 'Valeur déclarée en FCFA',
-        example: 5000000,
+        description: 'Valeur déclarée totale de cette ligne en FCFA',
+        example: 2000000,
     })
     @IsOptional()
     @Type(() => Number)
@@ -355,16 +325,12 @@ export class CreateOrdreMissionDto {
     observations?: string;
 
     @ApiPropertyOptional({
-        description: 'Liste des déclarations à créer ou ajouter (avec parcelles). Une même déclaration peut être répartie sur plusieurs ordres de mission.',
+        description: 'Liste des déclarations (nouvelles ou existantes). Les totaux (nbreColisTotal, poidsTotal) seront calculés automatiquement à partir des colis fournis.',
         type: [CreateNestedDeclarationDto],
         example: [
             {
                 numeroDeclaration: 'DECL-2024-001',
                 dateDeclaration: '2024-01-15',
-                nbreColisTotal: 500,
-                poidsTotal: 500.50,
-                nbreColisParcelle: 100,
-                poidsParcelle: 100.00,
                 depositaireId: 1,
                 maisonTransitId: 1,
                 bureauSortieId: 1,
@@ -372,10 +338,6 @@ export class CreateOrdreMissionDto {
             {
                 numeroDeclaration: 'DECL-2024-002',
                 dateDeclaration: '2024-01-15',
-                nbreColisTotal: 300,
-                poidsTotal: 250.75,
-                nbreColisParcelle: 300,
-                poidsParcelle: 250.75,
                 depositaireId: 1,
                 maisonTransitId: 1,
                 bureauSortieId: 1,
@@ -389,32 +351,32 @@ export class CreateOrdreMissionDto {
     declarations?: CreateNestedDeclarationDto[];
 
     @ApiPropertyOptional({
-        description: 'Liste des colis à créer. IMPORTANT: Chaque colis doit spécifier le numeroDeclaration auquel il appartient.',
+        description: 'Liste des lignes de marchandises (colis) pour cette parcelle. Chaque ligne représente un type de marchandise avec sa quantité et son poids total. La somme de toutes les lignes constitue la parcelle de cet ordre de mission.',
         type: [CreateNestedColisDto],
         example: [
             {
                 numeroDeclaration: 'DECL-2024-001',
                 natureMarchandise: 'Électronique - Ordinateurs portables',
                 positionTarifaire: 847130,
-                nbreColis: 50,
-                poids: 250.5,
-                valeurDeclaree: 5000000,
+                nbreColis: 20,
+                poids: 25.0,
+                valeurDeclaree: 2000000,
             },
             {
                 numeroDeclaration: 'DECL-2024-001',
                 natureMarchandise: 'Électronique - Smartphones',
                 positionTarifaire: 851712,
-                nbreColis: 50,
-                poids: 50.0,
-                valeurDeclaree: 3000000,
+                nbreColis: 30,
+                poids: 5.0,
+                valeurDeclaree: 1500000,
             },
             {
                 numeroDeclaration: 'DECL-2024-002',
                 natureMarchandise: 'Textile - Vêtements',
                 positionTarifaire: 620342,
-                nbreColis: 300,
-                poids: 250.75,
-                valeurDeclaree: 1500000,
+                nbreColis: 100,
+                poids: 150.0,
+                valeurDeclaree: 500000,
             },
         ],
     })

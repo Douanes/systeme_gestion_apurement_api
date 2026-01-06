@@ -152,39 +152,55 @@ export class OrdreMissionService {
                 },
             });
 
-            // 2. Créer ou mettre à jour les déclarations et créer les parcelles
+            // 2. Calculer les totaux de parcelle à partir des colis
+            const colisParDeclaration: Map<string, { nbreColis: number; poids: number }> = new Map();
+
+            if (createOrdreMissionDto.colis?.length) {
+                for (const coli of createOrdreMissionDto.colis) {
+                    const current = colisParDeclaration.get(coli.numeroDeclaration) || { nbreColis: 0, poids: 0 };
+                    colisParDeclaration.set(coli.numeroDeclaration, {
+                        nbreColis: current.nbreColis + (coli.nbreColis || 0),
+                        poids: current.poids + (coli.poids || 0),
+                    });
+                }
+            }
+
+            // 3. Créer ou mettre à jour les déclarations
+            const declarationsCreees: Map<string, number> = new Map(); // numeroDeclaration -> id
+
             if (createOrdreMissionDto.declarations?.length) {
                 for (const decl of createOrdreMissionDto.declarations) {
-                    // Chercher ou créer la déclaration
+                    const totauxParcelle = colisParDeclaration.get(decl.numeroDeclaration) || { nbreColis: 0, poids: 0 };
+
+                    // Chercher une déclaration existante
                     let declaration = await tx.declaration.findFirst({
                         where: { numeroDeclaration: decl.numeroDeclaration },
                     });
 
                     if (declaration) {
-                        // Mettre à jour les valeurs restantes
+                        // Déclaration existe: mettre à jour les quantités restantes
                         declaration = await tx.declaration.update({
                             where: { id: declaration.id },
                             data: {
                                 nbreColisRestant: {
-                                    decrement: decl.nbreColisParcelle,
+                                    decrement: totauxParcelle.nbreColis,
                                 },
                                 poidsRestant: {
-                                    decrement: decl.poidsParcelle,
+                                    decrement: totauxParcelle.poids,
                                 },
                                 updatedAt: new Date(),
                             },
                         });
                     } else {
-                        // Créer la déclaration
+                        // Nouvelle déclaration: créer avec les totaux = parcelle
                         declaration = await tx.declaration.create({
                             data: {
                                 numeroDeclaration: decl.numeroDeclaration,
                                 dateDeclaration: new Date(decl.dateDeclaration),
-                                nbreColisTotal: decl.nbreColisTotal,
-                                poidsTotal: decl.poidsTotal,
-                                nbreColisRestant:
-                                    decl.nbreColisTotal - decl.nbreColisParcelle,
-                                poidsRestant: decl.poidsTotal - decl.poidsParcelle,
+                                nbreColisTotal: totauxParcelle.nbreColis,
+                                poidsTotal: totauxParcelle.poids,
+                                nbreColisRestant: 0, // Tout est dans cette parcelle
+                                poidsRestant: 0,
                                 depositaireId: decl.depositaireId,
                                 maisonTransitId: decl.maisonTransitId,
                                 bureauSortieId: decl.bureauSortieId,
@@ -192,36 +208,34 @@ export class OrdreMissionService {
                         });
                     }
 
+                    declarationsCreees.set(decl.numeroDeclaration, declaration.id);
+
                     // Créer la parcelle (lien entre ordre et déclaration)
                     await tx.ordreMissionDeclaration.create({
                         data: {
                             ordreMissionId: ordre.id,
                             declarationId: declaration.id,
-                            nbreColisParcelle: decl.nbreColisParcelle,
-                            poidsParcelle: decl.poidsParcelle,
+                            nbreColisParcelle: totauxParcelle.nbreColis,
+                            poidsParcelle: totauxParcelle.poids,
                         },
                     });
                 }
             }
 
-            // 3. Créer les colis (liés aux déclarations)
+            // 4. Créer les colis (liés aux déclarations)
             if (createOrdreMissionDto.colis?.length) {
                 for (const coli of createOrdreMissionDto.colis) {
-                    // Trouver l'ID de la déclaration par son numéro
-                    const declaration = await tx.declaration.findFirst({
-                        where: { numeroDeclaration: coli.numeroDeclaration },
-                        select: { id: true },
-                    });
+                    const declarationId = declarationsCreees.get(coli.numeroDeclaration);
 
-                    if (!declaration) {
+                    if (!declarationId) {
                         throw new NotFoundException(
-                            `Déclaration ${coli.numeroDeclaration} non trouvée`,
+                            `Déclaration ${coli.numeroDeclaration} non trouvée. Assurez-vous de l'inclure dans la liste des déclarations.`,
                         );
                     }
 
                     await tx.colis.create({
                         data: {
-                            declarationId: declaration.id,
+                            declarationId: declarationId,
                             natureMarchandise: coli.natureMarchandise,
                             positionTarifaire: coli.positionTarifaire,
                             nbreColis: coli.nbreColis,
@@ -232,7 +246,7 @@ export class OrdreMissionService {
                 }
             }
 
-            // 4. Créer les conteneurs
+            // 5. Créer les conteneurs
             if (createOrdreMissionDto.conteneurs?.length) {
                 await tx.conteneur.createMany({
                     data: createOrdreMissionDto.conteneurs.map((cont) => ({
@@ -245,7 +259,7 @@ export class OrdreMissionService {
                 });
             }
 
-            // 5. Créer les camions
+            // 6. Créer les camions
             if (createOrdreMissionDto.camions?.length) {
                 await tx.camion.createMany({
                     data: createOrdreMissionDto.camions.map((cam) => ({
@@ -258,7 +272,7 @@ export class OrdreMissionService {
                 });
             }
 
-            // 6. Créer les voitures
+            // 7. Créer les voitures
             if (createOrdreMissionDto.voitures?.length) {
                 await tx.voiture.createMany({
                     data: createOrdreMissionDto.voitures.map((voit) => ({
@@ -488,7 +502,20 @@ export class OrdreMissionService {
                 },
             });
 
-            // 2. Si des déclarations sont fournies, gérer les parcelles
+            // 2. Calculer les totaux de parcelle à partir des nouveaux colis
+            const colisParDeclaration: Map<string, { nbreColis: number; poids: number }> = new Map();
+
+            if (updateOrdreMissionDto.colis !== undefined && updateOrdreMissionDto.colis.length > 0) {
+                for (const coli of updateOrdreMissionDto.colis) {
+                    const current = colisParDeclaration.get(coli.numeroDeclaration) || { nbreColis: 0, poids: 0 };
+                    colisParDeclaration.set(coli.numeroDeclaration, {
+                        nbreColis: current.nbreColis + (coli.nbreColis || 0),
+                        poids: current.poids + (coli.poids || 0),
+                    });
+                }
+            }
+
+            // 3. Si des déclarations sont fournies, gérer les parcelles
             if (updateOrdreMissionDto.declarations !== undefined) {
                 // Récupérer les anciennes parcelles pour réincrémenter les quantités
                 const oldParcelles = await tx.ordreMissionDeclaration.findMany({
@@ -525,38 +552,53 @@ export class OrdreMissionService {
                     },
                 });
 
+                // Soft delete tous les anciens colis
+                const currentDeclarations = oldParcelles.map((p) => p.declarationId);
+                if (currentDeclarations.length > 0) {
+                    await tx.colis.updateMany({
+                        where: {
+                            declarationId: { in: currentDeclarations },
+                            deletedAt: null,
+                        },
+                        data: { deletedAt: new Date() },
+                    });
+                }
+
                 // Créer les nouvelles parcelles
+                const declarationsCreees: Map<string, number> = new Map();
+
                 for (const decl of updateOrdreMissionDto.declarations) {
+                    const totauxParcelle = colisParDeclaration.get(decl.numeroDeclaration) || { nbreColis: 0, poids: 0 };
+
                     // Chercher ou créer la déclaration
                     let declaration = await tx.declaration.findFirst({
                         where: { numeroDeclaration: decl.numeroDeclaration },
                     });
 
                     if (declaration) {
-                        // Mettre à jour
+                        // Mettre à jour les quantités restantes
                         declaration = await tx.declaration.update({
                             where: { id: declaration.id },
                             data: {
                                 nbreColisRestant: {
-                                    decrement: decl.nbreColisParcelle,
+                                    decrement: totauxParcelle.nbreColis,
                                 },
                                 poidsRestant: {
-                                    decrement: decl.poidsParcelle,
+                                    decrement: totauxParcelle.poids,
                                 },
                                 updatedAt: new Date(),
                             },
                         });
                     } else {
-                        // Créer
+                        // Créer nouvelle déclaration
                         declaration = await tx.declaration.create({
                             data: {
                                 numeroDeclaration: decl.numeroDeclaration,
                                 dateDeclaration: new Date(decl.dateDeclaration),
-                                nbreColisTotal: decl.nbreColisTotal,
-                                poidsTotal: decl.poidsTotal,
-                                nbreColisRestant:
-                                    decl.nbreColisTotal - decl.nbreColisParcelle,
-                                poidsRestant: decl.poidsTotal - decl.poidsParcelle,
+                                nbreColisTotal: totauxParcelle.nbreColis,
+                                poidsTotal: totauxParcelle.poids,
+                                nbreColisRestant: 0,
+                                poidsRestant: 0,
                                 depositaireId: decl.depositaireId,
                                 maisonTransitId: decl.maisonTransitId,
                                 bureauSortieId: decl.bureauSortieId,
@@ -564,59 +606,41 @@ export class OrdreMissionService {
                         });
                     }
 
+                    declarationsCreees.set(decl.numeroDeclaration, declaration.id);
+
                     // Créer la nouvelle parcelle
                     await tx.ordreMissionDeclaration.create({
                         data: {
                             ordreMissionId: id,
                             declarationId: declaration.id,
-                            nbreColisParcelle: decl.nbreColisParcelle,
-                            poidsParcelle: decl.poidsParcelle,
+                            nbreColisParcelle: totauxParcelle.nbreColis,
+                            poidsParcelle: totauxParcelle.poids,
                         },
                     });
                 }
-            }
-
-            // 3. Si des colis sont fournis, remplacer tous les colis existants
-            if (updateOrdreMissionDto.colis !== undefined) {
-                // Soft delete tous les colis des déclarations de cet ordre
-                const currentDeclarations = await tx.ordreMissionDeclaration.findMany({
-                    where: { ordreMissionId: id, deletedAt: null },
-                    select: { declarationId: true },
-                });
-
-                const declarationIds = currentDeclarations.map((d) => d.declarationId);
-
-                await tx.colis.updateMany({
-                    where: {
-                        declarationId: { in: declarationIds },
-                        deletedAt: null,
-                    },
-                    data: { deletedAt: new Date() },
-                });
 
                 // Créer les nouveaux colis
-                for (const coli of updateOrdreMissionDto.colis) {
-                    const declaration = await tx.declaration.findFirst({
-                        where: { numeroDeclaration: coli.numeroDeclaration },
-                        select: { id: true },
-                    });
+                if (updateOrdreMissionDto.colis && updateOrdreMissionDto.colis.length > 0) {
+                    for (const coli of updateOrdreMissionDto.colis) {
+                        const declarationId = declarationsCreees.get(coli.numeroDeclaration);
 
-                    if (!declaration) {
-                        throw new NotFoundException(
-                            `Déclaration ${coli.numeroDeclaration} non trouvée`,
-                        );
+                        if (!declarationId) {
+                            throw new NotFoundException(
+                                `Déclaration ${coli.numeroDeclaration} non trouvée. Assurez-vous de l'inclure dans la liste des déclarations.`,
+                            );
+                        }
+
+                        await tx.colis.create({
+                            data: {
+                                declarationId: declarationId,
+                                natureMarchandise: coli.natureMarchandise,
+                                positionTarifaire: coli.positionTarifaire,
+                                nbreColis: coli.nbreColis,
+                                poids: coli.poids,
+                                valeurDeclaree: coli.valeurDeclaree,
+                            },
+                        });
                     }
-
-                    await tx.colis.create({
-                        data: {
-                            declarationId: declaration.id,
-                            natureMarchandise: coli.natureMarchandise,
-                            positionTarifaire: coli.positionTarifaire,
-                            nbreColis: coli.nbreColis,
-                            poids: coli.poids,
-                            valeurDeclaree: coli.valeurDeclaree,
-                        },
-                    });
                 }
             }
 
