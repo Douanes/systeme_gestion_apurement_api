@@ -779,7 +779,23 @@ export class OrdreMissionService {
      * Supprimer un ordre (soft delete)
      */
     async remove(id: number): Promise<void> {
-        await this.findOne(id);
+         const ordreMission = await this.prisma.ordreMission.findUnique({
+            where: { id },
+        });
+
+        if (!ordreMission) {
+            throw new NotFoundException(
+                `Ordre de mission avec l'ID ${id} non trouvée`,
+            );
+        }
+
+        // Vérifier si déjà supprimée
+        if (ordreMission.deletedAt !== null) {
+            throw new ConflictException(
+                `L'ordre de mission avec l'ID ${id} est déjà supprimée`,
+            );
+        }
+
         await this.prisma.ordreMission.update({
             where: { id },
             data: { deletedAt: new Date() },
