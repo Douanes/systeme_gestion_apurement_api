@@ -172,6 +172,7 @@ model BureauSortie {
   name          String
   localisation  String?
   paysFrontiere String?   @map("pays_frontiere")
+  itineraire    String? // Itinéraire par défaut pour ce bureau de sortie
   isActive      Boolean   @default(true) @map("is_active")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")

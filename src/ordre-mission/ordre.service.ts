@@ -192,15 +192,19 @@ export class OrdreMissionService {
                             },
                         });
                     } else {
-                        // Nouvelle déclaration: créer avec les totaux = parcelle
+                        // Nouvelle déclaration: créer avec les totaux fournis
+                        // nbreColisRestant = nbreColisTotal - nbreColisParcelle
+                        const nbreColisRestant = (decl.nbreColisTotal || 0) - totauxParcelle.nbreColis;
+                        const poidsRestant = (decl.poidsTotal || 0) - totauxParcelle.poids;
+
                         declaration = await tx.declaration.create({
                             data: {
                                 numeroDeclaration: decl.numeroDeclaration,
                                 dateDeclaration: new Date(decl.dateDeclaration),
-                                nbreColisTotal: totauxParcelle.nbreColis,
-                                poidsTotal: totauxParcelle.poids,
-                                nbreColisRestant: 0, // Tout est dans cette parcelle
-                                poidsRestant: 0,
+                                nbreColisTotal: decl.nbreColisTotal || 0,
+                                poidsTotal: decl.poidsTotal || 0,
+                                nbreColisRestant: nbreColisRestant,
+                                poidsRestant: poidsRestant,
                                 depositaireId: decl.depositaireId,
                                 maisonTransitId: decl.maisonTransitId,
                                 bureauSortieId: decl.bureauSortieId,
@@ -590,15 +594,19 @@ export class OrdreMissionService {
                             },
                         });
                     } else {
-                        // Créer nouvelle déclaration
+                        // Créer nouvelle déclaration avec les totaux fournis
+                        // nbreColisRestant = nbreColisTotal - nbreColisParcelle
+                        const nbreColisRestant = (decl.nbreColisTotal || 0) - totauxParcelle.nbreColis;
+                        const poidsRestant = (decl.poidsTotal || 0) - totauxParcelle.poids;
+
                         declaration = await tx.declaration.create({
                             data: {
                                 numeroDeclaration: decl.numeroDeclaration,
                                 dateDeclaration: new Date(decl.dateDeclaration),
-                                nbreColisTotal: totauxParcelle.nbreColis,
-                                poidsTotal: totauxParcelle.poids,
-                                nbreColisRestant: 0,
-                                poidsRestant: 0,
+                                nbreColisTotal: decl.nbreColisTotal || 0,
+                                poidsTotal: decl.poidsTotal || 0,
+                                nbreColisRestant: nbreColisRestant,
+                                poidsRestant: poidsRestant,
                                 depositaireId: decl.depositaireId,
                                 maisonTransitId: decl.maisonTransitId,
                                 bureauSortieId: decl.bureauSortieId,

@@ -54,6 +54,16 @@ export class CreateBureauSortieDto {
     paysFrontiere?: string;
 
     @ApiPropertyOptional({
+        description: 'Itinéraire par défaut pour ce bureau de sortie',
+        example: 'Nouakchott - Rosso - Dakar',
+        maxLength: 500,
+    })
+    @IsOptional()
+    @IsString()
+    @MaxLength(500, { message: 'L\'itinéraire ne peut pas dépasser 500 caractères' })
+    itineraire?: string;
+
+    @ApiPropertyOptional({
         description: 'Statut actif du bureau',
         example: true,
         default: true,
@@ -97,6 +107,13 @@ export class BureauSortieResponseDto {
         nullable: true,
     })
     paysFrontiere?: string | null;
+
+    @ApiPropertyOptional({
+        description: 'Itinéraire par défaut',
+        example: 'Nouakchott - Rosso - Dakar',
+        nullable: true,
+    })
+    itineraire?: string | null;
 
     @ApiProperty({
         description: 'Statut actif du bureau',

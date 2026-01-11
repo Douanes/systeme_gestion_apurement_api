@@ -4,6 +4,7 @@ import {
     IsNotEmpty,
     IsOptional,
     IsInt,
+    IsNumber,
     IsDateString,
     IsArray,
     ValidateNested,
@@ -44,6 +45,22 @@ export class CreateNestedDeclarationDto {
     @IsDateString()
     @IsNotEmpty()
     dateDeclaration: string;
+
+    @ApiProperty({
+        description: 'Nombre total de colis déclarés',
+        example: 100,
+    })
+    @IsInt()
+    @IsNotEmpty()
+    nbreColisTotal: number;
+
+    @ApiProperty({
+        description: 'Poids total déclaré (kg)',
+        example: 500.50,
+    })
+    @IsNumber()
+    @IsNotEmpty()
+    poidsTotal: number;
 
     @ApiPropertyOptional({
         description: 'ID du dépositaire',

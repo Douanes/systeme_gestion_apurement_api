@@ -28,6 +28,7 @@ export class BureauSortieService {
             name: bureauSortie.name,
             localisation: bureauSortie.localisation,
             paysFrontiere: bureauSortie.paysFrontiere,
+            itineraire: bureauSortie.itineraire,
             isActive: bureauSortie.isActive,
             createdAt: bureauSortie.createdAt,
             updatedAt: bureauSortie.updatedAt,
