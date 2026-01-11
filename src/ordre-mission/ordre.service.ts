@@ -140,7 +140,7 @@ export class OrdreMissionService {
                     itineraire: createOrdreMissionDto.itineraire,
                     dateOrdre: createOrdreMissionDto.dateOrdre
                         ? new Date(createOrdreMissionDto.dateOrdre)
-                        : null,
+                        : new Date(), // Date automatique si non fournie
                     depositaireId: createOrdreMissionDto.depositaireId,
                     maisonTransitId: createOrdreMissionDto.maisonTransitId,
                     statut: createOrdreMissionDto.statut as any as PrismaStatutOrdreMission,
