@@ -25,7 +25,8 @@ async function bootstrap() {
   // CORS configuration
   app.enableCors({
     origin: [
-      'http://localhost:5173',  // Frontend Vite en développement
+      'http://localhost:3000',  // Frontend Vite sur port 3000
+      'http://localhost:5173',  // Frontend Vite en développement (port par défaut)
       'http://localhost:3001',  // Frontend alternatif
       'https://apurement.ameenaltech.com',  // Frontend en production
     ],
