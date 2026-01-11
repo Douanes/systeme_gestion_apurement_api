@@ -342,12 +342,14 @@ export class CreateOrdreMissionDto {
     observations?: string;
 
     @ApiPropertyOptional({
-        description: 'Liste des déclarations (nouvelles ou existantes). Les totaux (nbreColisTotal, poidsTotal) seront calculés automatiquement à partir des colis fournis.',
+        description: 'Liste des déclarations (nouvelles ou existantes). Les champs nbreColisTotal et poidsTotal représentent les quantités déclarées initiales.',
         type: [CreateNestedDeclarationDto],
         example: [
             {
                 numeroDeclaration: 'DECL-2024-001',
                 dateDeclaration: '2024-01-15',
+                nbreColisTotal: 50,
+                poidsTotal: 30.0,
                 depositaireId: 1,
                 maisonTransitId: 1,
                 bureauSortieId: 1,
@@ -355,6 +357,8 @@ export class CreateOrdreMissionDto {
             {
                 numeroDeclaration: 'DECL-2024-002',
                 dateDeclaration: '2024-01-15',
+                nbreColisTotal: 100,
+                poidsTotal: 150.0,
                 depositaireId: 1,
                 maisonTransitId: 1,
                 bureauSortieId: 1,
