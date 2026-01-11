@@ -61,6 +61,7 @@ export class BureauSortieService {
                 name: createBureauSortieDto.name,
                 localisation: createBureauSortieDto.localisation,
                 paysFrontiere: createBureauSortieDto.paysFrontiere,
+                itineraire: createBureauSortieDto.itineraire,
                 isActive: createBureauSortieDto.isActive ?? true,
             },
         });
@@ -208,6 +209,7 @@ export class BureauSortieService {
                 name: updateBureauSortieDto.name,
                 localisation: updateBureauSortieDto.localisation,
                 paysFrontiere: updateBureauSortieDto.paysFrontiere,
+                itineraire: updateBureauSortieDto.itineraire,
                 isActive: updateBureauSortieDto.isActive,
                 updatedAt: new Date(),
             },
