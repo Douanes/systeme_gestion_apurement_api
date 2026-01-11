@@ -471,8 +471,13 @@ export class MailService {
             html: this.getTransitaireInvitationTemplate(companyName, invitedBy, submitUrl),
         };
 
-        await this.transporter.sendMail(mailOptions);
-        this.logger.log(`Email d'invitation transitaire envoyé à ${to}`);
+        try {
+            await this.transporter.sendMail(mailOptions);
+            this.logger.log(`Email d'invitation transitaire envoyé à ${to}`);
+        } catch (error) {
+            this.logger.error(`Erreur lors de l'envoi de l'email d'invitation à ${to}:`, error);
+            throw new Error('Impossible d\'envoyer l\'email d\'invitation');
+        }
     }
 
     /**
@@ -492,8 +497,13 @@ export class MailService {
             html: this.getRequestSubmittedNotificationTemplate(companyName, reviewUrl),
         };
 
-        await this.transporter.sendMail(mailOptions);
-        this.logger.log(`Notification de soumission envoyée à ${to}`);
+        try {
+            await this.transporter.sendMail(mailOptions);
+            this.logger.log(`Notification de soumission envoyée à ${to}`);
+        } catch (error) {
+            this.logger.error(`Erreur lors de l'envoi de la notification de soumission à ${to}:`, error);
+            throw new Error('Impossible d\'envoyer la notification de soumission');
+        }
     }
 
     /**
@@ -514,8 +524,13 @@ export class MailService {
             html: this.getRequestApprovedTemplate(companyName, activateUrl),
         };
 
-        await this.transporter.sendMail(mailOptions);
-        this.logger.log(`Email d'approbation envoyé à ${to}`);
+        try {
+            await this.transporter.sendMail(mailOptions);
+            this.logger.log(`Email d'approbation envoyé à ${to}`);
+        } catch (error) {
+            this.logger.error(`Erreur lors de l'envoi de l'email d'approbation à ${to}:`, error);
+            throw new Error('Impossible d\'envoyer l\'email d\'approbation');
+        }
     }
 
     /**
@@ -533,8 +548,13 @@ export class MailService {
             html: this.getRequestRejectedTemplate(companyName, rejectionReason),
         };
 
-        await this.transporter.sendMail(mailOptions);
-        this.logger.log(`Email de rejet envoyé à ${to}`);
+        try {
+            await this.transporter.sendMail(mailOptions);
+            this.logger.log(`Email de rejet envoyé à ${to}`);
+        } catch (error) {
+            this.logger.error(`Erreur lors de l'envoi de l'email de rejet à ${to}:`, error);
+            throw new Error('Impossible d\'envoyer l\'email de rejet');
+        }
     }
 
     /**

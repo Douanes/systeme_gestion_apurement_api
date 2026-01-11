@@ -23,7 +23,16 @@ async function bootstrap() {
   );
 
   // CORS configuration
-  app.enableCors();
+  app.enableCors({
+    origin: [
+      'http://localhost:5173',  // Frontend Vite en développement
+      'http://localhost:3001',  // Frontend alternatif
+      'https://apurement.ameenaltech.com',  // Frontend en production
+    ],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    credentials: true,
+  });
 
   // Swagger configuration
   const config = new DocumentBuilder()
