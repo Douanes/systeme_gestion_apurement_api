@@ -29,6 +29,7 @@ async function bootstrap() {
       'http://localhost:5173',  // Frontend Vite en développement (port par défaut)
       'http://localhost:3001',  // Frontend alternatif
       'https://apurement.ameenaltech.com',  // Frontend en production
+      'https://gestion-apurement-front-al7t.vercel.app'
     ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
