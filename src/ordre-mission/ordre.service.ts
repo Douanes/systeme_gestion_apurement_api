@@ -208,6 +208,7 @@ export class OrdreMissionService {
                                 depositaireId: decl.depositaireId,
                                 maisonTransitId: decl.maisonTransitId,
                                 bureauSortieId: decl.bureauSortieId,
+                                regimeId: decl.regimeId,
                             },
                         });
                     }
@@ -610,6 +611,7 @@ export class OrdreMissionService {
                                 depositaireId: decl.depositaireId,
                                 maisonTransitId: decl.maisonTransitId,
                                 bureauSortieId: decl.bureauSortieId,
+                                regimeId: decl.regimeId,
                             },
                         });
                     }

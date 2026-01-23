@@ -104,6 +104,8 @@ model Regime {
   updatedAt DateTime  @default(now())
   deletedAt DateTime?
 
+  declarations Declaration[]
+
   @@map("regimes")
 }
 
@@ -286,6 +288,7 @@ model Declaration {
   id                Int      @id @default(autoincrement())
   numeroDeclaration String   @map("numero_declaration") @db.VarChar(50)
   dateDeclaration   DateTime @map("date_declaration") @db.Date
+  regimeId          Int?     @map("regime_id")
 
   // Totaux de la déclaration originale
   nbreColisTotal Int     @map("nbre_colis_total")
@@ -313,6 +316,7 @@ model Declaration {
   bureauSortie  BureauSortie?             @relation(fields: [bureauSortieId], references: [id])
   maisonTransit MaisonTransit?            @relation(fields: [maisonTransitId], references: [id])
   depositaire   Depositaire?              @relation(fields: [depositaireId], references: [id])
+  regime        Regime?                   @relation(fields: [regimeId], references: [id])
   agent         Agent?                    @relation(fields: [agentId], references: [id])
   agentId       Int?
   colis         Colis[]

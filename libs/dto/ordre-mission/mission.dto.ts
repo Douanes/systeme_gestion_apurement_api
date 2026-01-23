@@ -9,9 +9,6 @@ import {
     IsArray,
     ValidateNested,
     IsEnum,
-    IsDecimal,
-    MaxLength,
-    MinLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -85,6 +82,14 @@ export class CreateNestedDeclarationDto {
     @IsOptional()
     @IsInt()
     bureauSortieId?: number;
+
+    @ApiPropertyOptional({
+        description: 'ID du régime douanier',
+        example: 1,
+    })
+    @IsOptional()
+    @IsInt()
+    regimeId?: number;
 }
 
 export class CreateNestedColisDto {
