@@ -18,6 +18,7 @@ import { ProfileController } from './profile/profile.controller';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { MaisonTransitRequestsModule } from './maison-transit-requests/maison-transit-requests.module';
 import { DepositaireModule } from './depositaire/depositaire.module';
+import { DeclarationModule } from './declaration/declaration.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { DepositaireModule } from './depositaire/depositaire.module';
     EscouadeModule,
     AgentModule,
     DepositaireModule,
+    DeclarationModule,
     OrdreMissionModule,
     StatisticsModule
   ],
