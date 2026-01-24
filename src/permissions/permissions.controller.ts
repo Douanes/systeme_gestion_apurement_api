@@ -98,6 +98,26 @@ export class PermissionsController {
   }
 
   /**
+   * Récupérer les permissions de l'utilisateur connecté
+   * Cet endpoint est accessible par tous les utilisateurs authentifiés
+   */
+  @Get('me')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Récupérer mes permissions',
+    description:
+      'Retourne les permissions de l\'utilisateur actuellement connecté. Accessible par tous les utilisateurs authentifiés.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Permissions récupérées avec succès',
+    type: UserPermissionsDto,
+  })
+  async getMyPermissions(@Request() req: any): Promise<UserPermissionsDto> {
+    return this.permissionsService.getUserPermissions(req.user.sub);
+  }
+
+  /**
    * Récupérer une permission par ID
    */
   @Get(':id')
