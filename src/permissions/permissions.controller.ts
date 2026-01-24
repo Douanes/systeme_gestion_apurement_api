@@ -114,7 +114,7 @@ export class PermissionsController {
     type: UserPermissionsDto,
   })
   async getMyPermissions(@Request() req: any): Promise<UserPermissionsDto> {
-    return this.permissionsService.getUserPermissions(req.user.sub);
+    return this.permissionsService.getUserPermissions(req.user.id);
   }
 
   /**
