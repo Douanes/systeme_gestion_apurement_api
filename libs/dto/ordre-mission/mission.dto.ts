@@ -157,6 +157,14 @@ export class CreateNestedConteneurDto {
     numConteneur: string;
 
     @ApiPropertyOptional({
+        description: 'Numéro du plomb',
+        example: 'PLB-2024-001',
+    })
+    @IsOptional()
+    @IsString()
+    numPlomb?: string;
+
+    @ApiPropertyOptional({
         description: 'Nom du conducteur',
         example: 'Amadou Fall',
     })
@@ -689,7 +697,7 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
     } | null;
 
     @ApiPropertyOptional({
-        description: 'Déclarations avec informations sur les parcelles',
+        description: 'Déclarations avec informations sur les parcelles et leurs relations',
         type: 'array',
         isArray: true,
         example: [
@@ -702,6 +710,10 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
                 poidsTotal: 500.50,
                 nbreColisRestant: 400,
                 poidsRestant: 400.50,
+                regime: { id: 1, name: 'Transit', code: 'TR' },
+                maisonTransit: { id: 1, name: 'Maison Transit Dakar', code: 'MTD' },
+                depositaire: { id: 1, name: 'Dépositaire Dakar' },
+                bureauSortie: { id: 1, name: 'Bureau Dakar', code: 'BDS' },
                 parcelle: {
                     nbreColisParcelle: 100,
                     poidsParcelle: 100.00,
@@ -727,6 +739,25 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
         poidsTotal: number;
         nbreColisRestant: number;
         poidsRestant: number;
+        regime?: {
+            id: number;
+            name: string;
+            code?: string | null;
+        } | null;
+        maisonTransit?: {
+            id: number;
+            name: string;
+            code?: string | null;
+        } | null;
+        depositaire?: {
+            id: number;
+            name: string;
+        } | null;
+        bureauSortie?: {
+            id: number;
+            name: string;
+            code?: string | null;
+        } | null;
         parcelle: {
             nbreColisParcelle: number;
             poidsParcelle: number;
@@ -749,6 +780,7 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
             {
                 id: 1,
                 numConteneur: 'MSCU1234567',
+                numPlomb: 'PLB-2024-001',
                 driverName: 'Amadou Fall',
             },
         ],
@@ -756,7 +788,8 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
     conteneurs?: Array<{
         id: number;
         numConteneur: string;
-        driverName?: string | null;  // Changed to allow null
+        numPlomb?: string | null;
+        driverName?: string | null;
     }>;
 
     @ApiPropertyOptional({

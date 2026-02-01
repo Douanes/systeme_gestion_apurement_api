@@ -19,12 +19,15 @@ import {
     DeclarationPaginationQueryDto,
     DeclarationWithOrdersResponseDto,
     StatutLivraisonFilter,
+    DeclarationStatisticsQueryDto,
+    DeclarationStatisticsResponseDto,
+    TimeGranularity,
 } from 'libs/dto/declaration/declaration.dto';
 import { PaginatedResponseDto } from 'libs/dto/global/response.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('Déclarations')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard)
 @Controller('declarations')
 export class DeclarationController {
@@ -178,6 +181,98 @@ Récupère la liste paginée des déclarations avec leurs parcelles (ordres de m
         @Query() query: DeclarationPaginationQueryDto,
     ): Promise<PaginatedResponseDto<DeclarationWithOrdersResponseDto>> {
         return this.declarationService.findAll(query);
+    }
+
+    @Get('statistics')
+    @ApiOperation({
+        summary: 'Statistiques des déclarations pour graphiques',
+        description: `
+Récupère les statistiques des déclarations pour affichage en graphique/courbe.
+
+**Retourne trois séries de données:**
+- **totalDeclarations**: Nombre total de déclarations par période
+- **declarationsApurees**: Nombre de déclarations avec statut APURE_SE
+- **declarationsNonApurees**: Nombre de déclarations non apurées (NON_APURE ou null)
+
+**Granularités disponibles:**
+- \`day\`: Par jour
+- \`week\`: Par semaine (ISO, commence le lundi)
+- \`month\`: Par mois
+- \`year\`: Par année
+
+**Période personnalisée:**
+Si aucune date n'est fournie, retourne les N dernières périodes (par défaut 12).
+        `,
+    })
+    @ApiQuery({
+        name: 'granularity',
+        required: false,
+        enum: TimeGranularity,
+        example: TimeGranularity.MONTH,
+        description: 'Granularité temporelle',
+    })
+    @ApiQuery({
+        name: 'dateDebut',
+        required: false,
+        type: String,
+        example: '2024-01-01',
+        description: 'Date de début de la période (YYYY-MM-DD)',
+    })
+    @ApiQuery({
+        name: 'dateFin',
+        required: false,
+        type: String,
+        example: '2024-12-31',
+        description: 'Date de fin de la période (YYYY-MM-DD)',
+    })
+    @ApiQuery({
+        name: 'maisonTransitId',
+        required: false,
+        type: Number,
+        description: 'Filtrer par maison de transit',
+    })
+    @ApiQuery({
+        name: 'regimeId',
+        required: false,
+        type: Number,
+        description: 'Filtrer par régime douanier',
+    })
+    @ApiQuery({
+        name: 'periods',
+        required: false,
+        type: Number,
+        example: 12,
+        description: 'Nombre de périodes à retourner (si pas de dateDebut)',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Statistiques des déclarations',
+        schema: {
+            example: {
+                granularity: 'month',
+                dateDebut: '2024-01-01T00:00:00.000Z',
+                dateFin: '2024-12-31T23:59:59.999Z',
+                chartData: [
+                    { period: 'Janvier 2024', declarations: 150, apurees: 100, nonApurees: 50 },
+                    { period: 'Février 2024', declarations: 180, apurees: 120, nonApurees: 60 },
+                    { period: 'Mars 2024', declarations: 200, apurees: 150, nonApurees: 50 },
+                    { period: 'Avril 2024', declarations: 220, apurees: 180, nonApurees: 40 },
+                    { period: 'Mai 2024', declarations: 190, apurees: 140, nonApurees: 50 },
+                    { period: 'Juin 2024', declarations: 210, apurees: 160, nonApurees: 50 },
+                ],
+                totals: {
+                    totalDeclarations: 1150,
+                    declarationsApurees: 850,
+                    declarationsNonApurees: 300,
+                    tauxApurement: 73.91,
+                },
+            },
+        },
+    })
+    async getStatistics(
+        @Query() query: DeclarationStatisticsQueryDto,
+    ): Promise<DeclarationStatisticsResponseDto> {
+        return this.declarationService.getStatistics(query);
     }
 
     @Get(':id')

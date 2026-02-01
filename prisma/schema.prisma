@@ -366,6 +366,7 @@ model Conteneur {
   id                Int       @id @default(autoincrement())
   ordreMissionId    Int?      @map("ordre_mission_id")
   numConteneur      String    @unique @map("num_conteneur")
+  numPlomb      String?    @map("num_plomb")
   driverName        String?   @map("driver_name")
   driverNationality String?   @map("driver_nationality")
   phone             String?   @map("ip_address")

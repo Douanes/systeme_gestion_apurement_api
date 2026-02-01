@@ -198,6 +198,7 @@ export class OrdreMissionService {
                         const nbreColisRestant = (decl.nbreColisTotal || 0) - totauxParcelle.nbreColis;
                         const poidsRestant = (decl.poidsTotal || 0) - totauxParcelle.poids;
 
+                        // Utiliser les relations de la déclaration ou hériter de l'ordre de mission
                         declaration = await tx.declaration.create({
                             data: {
                                 numeroDeclaration: decl.numeroDeclaration,
@@ -206,9 +207,9 @@ export class OrdreMissionService {
                                 poidsTotal: decl.poidsTotal || 0,
                                 nbreColisRestant: nbreColisRestant,
                                 poidsRestant: poidsRestant,
-                                depositaireId: decl.depositaireId,
-                                maisonTransitId: decl.maisonTransitId,
-                                bureauSortieId: decl.bureauSortieId,
+                                depositaireId: decl.depositaireId ?? createOrdreMissionDto.depositaireId,
+                                maisonTransitId: decl.maisonTransitId ?? createOrdreMissionDto.maisonTransitId,
+                                bureauSortieId: decl.bureauSortieId ?? createOrdreMissionDto.bureauSortieId,
                                 regimeId: decl.regimeId,
                             },
                         });
@@ -258,6 +259,7 @@ export class OrdreMissionService {
                     data: createOrdreMissionDto.conteneurs.map((cont) => ({
                         ordreMissionId: ordre.id,
                         numConteneur: cont.numConteneur,
+                        numPlomb: cont.numPlomb,
                         driverName: cont.driverName,
                         driverNationality: cont.driverNationality,
                         phone: cont.phone,
@@ -445,6 +447,10 @@ export class OrdreMissionService {
                         declaration: {
                             include: {
                                 colis: { where: { deletedAt: null } },
+                                regime: true,
+                                maisonTransit: true,
+                                depositaire: true,
+                                bureauSortie: true,
                             },
                         },
                     },
@@ -487,6 +493,34 @@ export class OrdreMissionService {
                     ? omd.declaration.poidsRestant.toNumber()
                     : 0,
                 statutApurement: omd.declaration.statutApurement,
+                // Relations de la déclaration
+                regime: omd.declaration.regime
+                    ? {
+                        id: omd.declaration.regime.id,
+                        name: omd.declaration.regime.name,
+                        code: omd.declaration.regime.code,
+                    }
+                    : null,
+                maisonTransit: omd.declaration.maisonTransit
+                    ? {
+                        id: omd.declaration.maisonTransit.id,
+                        name: omd.declaration.maisonTransit.name,
+                        code: omd.declaration.maisonTransit.code,
+                    }
+                    : null,
+                depositaire: omd.declaration.depositaire
+                    ? {
+                        id: omd.declaration.depositaire.id,
+                        name: omd.declaration.depositaire.name,
+                    }
+                    : null,
+                bureauSortie: omd.declaration.bureauSortie
+                    ? {
+                        id: omd.declaration.bureauSortie.id,
+                        name: omd.declaration.bureauSortie.name,
+                        code: omd.declaration.bureauSortie.code,
+                    }
+                    : null,
                 // Parcelle pour CET ordre de mission
                 parcelle: {
                     nbreColisParcelle: omd.nbreColisParcelle,
@@ -508,6 +542,7 @@ export class OrdreMissionService {
             conteneurs: ordreMission.conteneurs.map((c) => ({
                 id: c.id,
                 numConteneur: c.numConteneur,
+                numPlomb: c.numPlomb,
                 driverName: c.driverName,
             })),
             camions: ordreMission.camions.map((c) => ({
@@ -665,6 +700,7 @@ export class OrdreMissionService {
                         const nbreColisRestant = (decl.nbreColisTotal || 0) - totauxParcelle.nbreColis;
                         const poidsRestant = (decl.poidsTotal || 0) - totauxParcelle.poids;
 
+                        // Utiliser les relations de la déclaration ou hériter de l'ordre de mission
                         declaration = await tx.declaration.create({
                             data: {
                                 numeroDeclaration: decl.numeroDeclaration,
@@ -673,9 +709,9 @@ export class OrdreMissionService {
                                 poidsTotal: decl.poidsTotal || 0,
                                 nbreColisRestant: nbreColisRestant,
                                 poidsRestant: poidsRestant,
-                                depositaireId: decl.depositaireId,
-                                maisonTransitId: decl.maisonTransitId,
-                                bureauSortieId: decl.bureauSortieId,
+                                depositaireId: decl.depositaireId ?? updateOrdreMissionDto.depositaireId,
+                                maisonTransitId: decl.maisonTransitId ?? updateOrdreMissionDto.maisonTransitId,
+                                bureauSortieId: decl.bureauSortieId ?? updateOrdreMissionDto.bureauSortieId,
                                 regimeId: decl.regimeId,
                             },
                         });
@@ -741,6 +777,7 @@ export class OrdreMissionService {
                         },
                         update: {
                             ordreMissionId: id,
+                            numPlomb: cont.numPlomb,
                             driverName: cont.driverName,
                             driverNationality: cont.driverNationality,
                             phone: cont.phone,
@@ -750,6 +787,7 @@ export class OrdreMissionService {
                         create: {
                             ordreMissionId: id,
                             numConteneur: cont.numConteneur,
+                            numPlomb: cont.numPlomb,
                             driverName: cont.driverName,
                             driverNationality: cont.driverNationality,
                             phone: cont.phone,
