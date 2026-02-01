@@ -110,3 +110,80 @@ export class OrdreMissionPaginationQueryDto {
     @IsEnum(['asc', 'desc'])
     sortOrder?: 'asc' | 'desc' = 'desc';
 }
+
+export class AuditNonApuresQueryDto {
+    @ApiPropertyOptional({
+        description: 'Numéro de la page (commence à 1)',
+        example: 1,
+        minimum: 1,
+        default: 1,
+    })
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    @Min(1)
+    page?: number = 1;
+
+    @ApiPropertyOptional({
+        description: 'Nombre d\'éléments par page',
+        example: 10,
+        minimum: 1,
+        maximum: 100,
+        default: 10,
+    })
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    @Min(1)
+    @Max(100)
+    limit?: number = 10;
+
+    @ApiPropertyOptional({
+        description: 'Nombre minimum de jours depuis la date de l\'ordre (par défaut 7 jours)',
+        example: 7,
+        minimum: 1,
+        default: 7,
+    })
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    @Min(1)
+    minDaysOld?: number = 7;
+
+    @ApiPropertyOptional({
+        description: 'Terme de recherche (recherche dans numéro, destination, itinéraire)',
+        example: 'Port',
+    })
+    @IsOptional()
+    @IsString()
+    search?: string;
+
+    @ApiPropertyOptional({
+        description: 'Filtrer par maison de transit',
+        example: 1,
+    })
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    maisonTransitId?: number;
+
+    @ApiPropertyOptional({
+        description: 'Champ de tri',
+        example: 'dateOrdre',
+        enum: ['dateOrdre', 'createdAt', 'number'],
+        default: 'dateOrdre',
+    })
+    @IsOptional()
+    @IsString()
+    sortBy?: string = 'dateOrdre';
+
+    @ApiPropertyOptional({
+        description: 'Ordre de tri',
+        example: 'asc',
+        enum: ['asc', 'desc'],
+        default: 'asc',
+    })
+    @IsOptional()
+    @IsEnum(['asc', 'desc'])
+    sortOrder?: 'asc' | 'desc' = 'asc';
+}

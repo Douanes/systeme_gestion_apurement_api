@@ -14,7 +14,7 @@ import {
     StatutApurement,
     StatutLivraisonParcelle,
 } from 'libs/dto/ordre-mission/mission.dto';
-import { OrdreMissionPaginationQueryDto } from 'libs/dto/ordre-mission/pagination.dto';
+import { OrdreMissionPaginationQueryDto, AuditNonApuresQueryDto } from 'libs/dto/ordre-mission/pagination.dto';
 import { PaginatedResponseDto } from 'libs/dto/global/response.dto';
 
 @Injectable()
@@ -923,6 +923,95 @@ export class OrdreMissionService {
             totalConteneurs: stats?._count.conteneurs || 0,
             totalCamions: stats?._count.camions || 0,
             totalVoitures: stats?._count.voitures || 0,
+        };
+    }
+
+    /**
+     * Récupérer les ordres de mission non apurés pour audit
+     * Retourne les ordres avec statutApurement = NON_APURE et datant de X jours ou plus
+     */
+    async findNonApuresForAudit(
+        query: AuditNonApuresQueryDto,
+    ): Promise<PaginatedResponseDto<OrdreMissionResponseDto & { joursDepuisOrdre: number }>> {
+        const {
+            page = 1,
+            limit = 10,
+            minDaysOld = 7,
+            search,
+            maisonTransitId,
+            sortBy = 'dateOrdre',
+            sortOrder = 'asc',
+        } = query;
+
+        const skip = (page - 1) * limit;
+
+        // Calculer la date limite (il y a X jours)
+        const dateLimite = new Date();
+        dateLimite.setDate(dateLimite.getDate() - minDaysOld);
+
+        const where: any = {
+            deletedAt: null,
+            statutApurement: PrismaStatutApurement.NON_APURE,
+            dateOrdre: {
+                lte: dateLimite,
+            },
+        };
+
+        if (maisonTransitId) {
+            where.maisonTransitId = maisonTransitId;
+        }
+
+        if (search) {
+            where.OR = [
+                { number: { contains: search } },
+                { destination: { contains: search } },
+                { itineraire: { contains: search } },
+            ];
+        }
+
+        const [ordres, total] = await Promise.all([
+            this.prisma.ordreMission.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { [sortBy]: sortOrder },
+                include: {
+                    maisonTransit: {
+                        select: { id: true, name: true, code: true },
+                    },
+                    depositaire: {
+                        select: { id: true, name: true },
+                    },
+                },
+            }),
+            this.prisma.ordreMission.count({ where }),
+        ]);
+
+        // Calculer le nombre de jours depuis la date de l'ordre pour chaque ordre
+        const now = new Date();
+        const ordresWithDays = ordres.map((ordre) => {
+            const dateOrdre = ordre.dateOrdre ? new Date(ordre.dateOrdre) : new Date(ordre.createdAt);
+            const diffTime = Math.abs(now.getTime() - dateOrdre.getTime());
+            const joursDepuisOrdre = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            return {
+                ...this.toResponseDto(ordre),
+                joursDepuisOrdre,
+                maisonTransit: ordre.maisonTransit,
+                depositaire: ordre.depositaire,
+            };
+        });
+
+        return {
+            data: ordresWithDays,
+            meta: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+                hasNext: page < Math.ceil(total / limit),
+                hasPrevious: page > 1,
+            },
         };
     }
 }
