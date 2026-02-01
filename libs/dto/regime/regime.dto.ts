@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { IsInt } from 'class-validator';
 import {
   IsString,
   IsNotEmpty,
@@ -27,6 +28,14 @@ export class CreateRegimeDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional({
+    description: 'Nombre maximum de nature de marchandise pour ce régime',
+    example: 1,
+  })
+  @IsOptional()
+  @IsInt()
+  nbreNatureMarchandise?: number;
 }
 
 export class UpdateRegimeDto extends PartialType(CreateRegimeDto) { }
@@ -40,7 +49,7 @@ export class RegimeResponseDto {
 
   @ApiProperty({
     description: 'Nom du régime douanier',
-    example: 'Transit ordinaire',
+    example: 'R110',
   })
   name: string;
 
@@ -49,6 +58,12 @@ export class RegimeResponseDto {
     example: 'Régime permettant le transit de marchandises sous douane',
   })
   description?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Nombre maximum de nature de marchandise pour ce régime',
+    example: 2,
+  })
+  nbreNatureMarchandise?: number | null;
 
   @ApiProperty({
     description: 'Date de création',

@@ -35,6 +35,7 @@ export class RegimeService {
       data: {
         name: createRegimeDto.name,
         description: createRegimeDto.description,
+        nbreNatureMarchandise: createRegimeDto.nbreNatureMarchandise,
       },
     });
 
@@ -141,6 +142,7 @@ export class RegimeService {
       data: {
         name: updateRegimeDto.name,
         description: updateRegimeDto.description,
+        nbreNatureMarchandise: updateRegimeDto.nbreNatureMarchandise,
         updatedAt: new Date(),
       },
     });
@@ -185,6 +187,7 @@ export class RegimeService {
       id: regime.id,
       name: regime.name,
       description: regime.description,
+      nbreNatureMarchandise: regime.nbreNatureMarchandise,
       createdAt: regime.createdAt,
       updatedAt: regime.updatedAt,
     };
