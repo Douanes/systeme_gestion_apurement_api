@@ -28,7 +28,7 @@ import {
     OrdreMissionResponseDto,
     OrdreMissionWithRelationsDto,
 } from 'libs/dto/ordre-mission/mission.dto';
-import { OrdreMissionPaginationQueryDto } from 'libs/dto/ordre-mission/pagination.dto';
+import { OrdreMissionPaginationQueryDto, AuditNonApuresQueryDto } from 'libs/dto/ordre-mission/pagination.dto';
 import { ErrorResponseDto } from 'libs/dto/global/response.dto';
 
 @ApiTags('Ordres de Mission')
@@ -130,6 +130,59 @@ export class OrdreMissionController {
     })
     async findAll(@Query() paginationQuery: OrdreMissionPaginationQueryDto) {
         return this.ordreMissionService.findAll(paginationQuery);
+    }
+
+    @Get('audit/non-apures')
+    @ApiOperation({
+        summary: 'Récupérer les ordres de mission non apurés pour audit',
+        description:
+            'Récupère une liste paginée des ordres de mission avec statut NON_APURE datant d\'une semaine ou plus. ' +
+            'Utile pour les audits et le suivi des ordres en attente d\'apurement.',
+    })
+    @ApiQuery({ type: AuditNonApuresQueryDto })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Liste des ordres de mission non apurés récupérée avec succès',
+        schema: {
+            example: {
+                data: [
+                    {
+                        id: 1,
+                        number: 'MTD-2025-000001',
+                        destination: 'Port de Dakar',
+                        itineraire: 'Dakar -> Thiès -> Saint-Louis',
+                        dateOrdre: '2024-01-15T00:00:00.000Z',
+                        depositaireId: 1,
+                        maisonTransitId: 1,
+                        statut: 'EN_COURS',
+                        statutApurement: 'NON_APURE',
+                        joursDepuisOrdre: 15,
+                        maisonTransit: {
+                            id: 1,
+                            name: 'Maison Transit Dakar',
+                            code: 'MTD',
+                        },
+                        depositaire: {
+                            id: 1,
+                            name: 'Dépositaire Dakar',
+                        },
+                        createdAt: '2024-01-15T10:30:00.000Z',
+                        updatedAt: '2024-01-15T10:30:00.000Z',
+                    },
+                ],
+                meta: {
+                    page: 1,
+                    limit: 10,
+                    total: 25,
+                    totalPages: 3,
+                    hasNext: true,
+                    hasPrevious: false,
+                },
+            },
+        },
+    })
+    async findNonApuresForAudit(@Query() query: AuditNonApuresQueryDto) {
+        return this.ordreMissionService.findNonApuresForAudit(query);
     }
 
     @Get(':id')
