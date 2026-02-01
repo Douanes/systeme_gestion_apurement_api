@@ -25,6 +25,11 @@ export enum StatutApurement {
     REJET = 'REJET',
 }
 
+export enum StatutLivraisonParcelle {
+    PARTIELLEMENT_LIVRE = 'PARTIELLEMENT_LIVRE',
+    TOTALEMENT_LIVRE = 'TOTALEMENT_LIVRE',
+}
+
 // Nested DTOs - CREATE new entities
 export class CreateNestedDeclarationDto {
     @ApiProperty({
@@ -577,6 +582,19 @@ export class OrdreMissionResponseDto {
         example: '2024-01-15T10:30:00.000Z',
     })
     updatedAt: Date;
+
+    @ApiPropertyOptional({
+        description: 'Nombre de parcelles (ordres de mission) créées pour les déclarations de cet ordre',
+        example: 2,
+    })
+    nbreParcelles?: number;
+
+    @ApiPropertyOptional({
+        description: 'Statut de livraison des parcelles',
+        example: StatutLivraisonParcelle.PARTIELLEMENT_LIVRE,
+        enum: StatutLivraisonParcelle,
+    })
+    statutLivraisonParcelle?: StatutLivraisonParcelle;
 }
 
 export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {

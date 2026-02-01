@@ -12,6 +12,7 @@ import {
     OrdreMissionWithRelationsDto,
     StatutOrdreMission,
     StatutApurement,
+    StatutLivraisonParcelle,
 } from 'libs/dto/ordre-mission/mission.dto';
 import { OrdreMissionPaginationQueryDto } from 'libs/dto/ordre-mission/pagination.dto';
 import { PaginatedResponseDto } from 'libs/dto/global/response.dto';
@@ -341,12 +342,76 @@ export class OrdreMissionService {
                 skip,
                 take: limit,
                 orderBy: { [sortBy]: sortOrder },
+                include: {
+                    declarations: {
+                        where: { deletedAt: null },
+                        include: {
+                            declaration: true,
+                        },
+                    },
+                },
             }),
             this.prisma.ordreMission.count({ where }),
         ]);
 
+        // Pour chaque ordre, calculer le nombre de parcelles et le statut de livraison
+        const ordresWithParcelles = await Promise.all(
+            ordres.map(async (ordre) => {
+                // Récupérer les IDs des déclarations liées à cet ordre
+                const declarationIds = ordre.declarations.map((d) => d.declarationId);
+
+                if (declarationIds.length === 0) {
+                    return {
+                        ...this.toResponseDto(ordre),
+                        nbreParcelles: 0,
+                        statutLivraisonParcelle: undefined,
+                    };
+                }
+
+                // Compter le nombre de parcelles par déclaration et trouver le max
+                // Cela permet de savoir quelle parcelle peut être générée (ex: si max = 2, on peut générer Parcelle 3)
+                const parcellesCounts = await this.prisma.ordreMissionDeclaration.groupBy({
+                    by: ['declarationId'],
+                    where: {
+                        declarationId: { in: declarationIds },
+                        deletedAt: null,
+                    },
+                    _count: {
+                        declarationId: true,
+                    },
+                });
+
+                // Le nombre max de parcelles parmi toutes les déclarations
+                const maxParcelles = parcellesCounts.length > 0
+                    ? Math.max(...parcellesCounts.map((p) => p._count.declarationId))
+                    : 0;
+
+                // Déterminer le statut de livraison
+                // Vérifier si toutes les déclarations sont totalement livrées (nbreColisRestant = 0)
+                const declarationsNonLivrees = ordre.declarations.filter(
+                    (d) => d.declaration.nbreColisRestant > 0
+                );
+
+                let statutLivraisonParcelle: StatutLivraisonParcelle | undefined;
+
+                if (maxParcelles > 0) {
+                    if (declarationsNonLivrees.length === 0) {
+                        statutLivraisonParcelle = StatutLivraisonParcelle.TOTALEMENT_LIVRE;
+                    } else {
+                        statutLivraisonParcelle = StatutLivraisonParcelle.PARTIELLEMENT_LIVRE;
+                    }
+                }
+
+                return {
+                    ...this.toResponseDto(ordre),
+                    nbreParcelles: maxParcelles,
+                    statutLivraisonParcelle,
+                };
+            })
+        );
+
         return {
-            data: ordres.map((o) => this.toResponseDto(o)),
+            data: ordresWithParcelles,
             meta: {
                 page,
                 limit,
