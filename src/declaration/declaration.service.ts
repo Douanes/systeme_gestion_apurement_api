@@ -5,6 +5,10 @@ import {
     DeclarationPaginationQueryDto,
     DeclarationWithOrdersResponseDto,
     StatutLivraisonFilter,
+    DeclarationStatisticsQueryDto,
+    DeclarationStatisticsResponseDto,
+    StatisticsDataPointDto,
+    TimeGranularity,
 } from 'libs/dto/declaration/declaration.dto';
 import { PaginatedResponseDto } from 'libs/dto/global/response.dto';
 
@@ -264,14 +268,271 @@ export class DeclarationService {
             statutLivraison,
             statutApurement: declaration.statutApurement,
             dateApurement: declaration.dateApurement,
-            regime: declaration.regime,
-            maisonTransit: declaration.maisonTransit,
-            depositaire: declaration.depositaire,
-            bureauSortie: declaration.bureauSortie,
+            regime: declaration.regime
+                ? {
+                    id: declaration.regime.id,
+                    name: declaration.regime.name,
+                }
+                : null,
+            maisonTransit: declaration.maisonTransit
+                ? {
+                    id: declaration.maisonTransit.id,
+                    name: declaration.maisonTransit.name,
+                    code: declaration.maisonTransit.code,
+                }
+                : null,
+            depositaire: declaration.depositaire
+                ? {
+                    id: declaration.depositaire.id,
+                    name: declaration.depositaire.name,
+                }
+                : null,
+            bureauSortie: declaration.bureauSortie
+                ? {
+                    id: declaration.bureauSortie.id,
+                    name: declaration.bureauSortie.name,
+                    code: declaration.bureauSortie.code,
+                }
+                : null,
             parcelles,
             totalParcelles: parcelles.length,
             createdAt: declaration.createdAt,
             updatedAt: declaration.updatedAt,
         };
+    }
+
+    /**
+     * Récupérer les statistiques des déclarations pour graphiques
+     * Retourne le nombre de déclarations totales, apurées et non apurées par période
+     */
+    async getStatistics(
+        query: DeclarationStatisticsQueryDto,
+    ): Promise<DeclarationStatisticsResponseDto> {
+        const {
+            granularity = TimeGranularity.MONTH,
+            dateDebut,
+            dateFin,
+            maisonTransitId,
+            regimeId,
+            periods = 12,
+        } = query;
+
+        // Calculer les dates de début et fin si non fournies
+        const endDate = dateFin ? new Date(dateFin) : new Date();
+        endDate.setHours(23, 59, 59, 999);
+
+        let startDate: Date;
+        if (dateDebut) {
+            startDate = new Date(dateDebut);
+        } else {
+            startDate = this.calculateStartDate(endDate, granularity, periods);
+        }
+        startDate.setHours(0, 0, 0, 0);
+
+        // Générer les périodes
+        const periodsData = this.generatePeriods(startDate, endDate, granularity);
+
+        // Construire le filtre de base
+        const baseWhere: Prisma.DeclarationWhereInput = {
+            deletedAt: null,
+            dateDeclaration: {
+                gte: startDate,
+                lte: endDate,
+            },
+        };
+
+        if (maisonTransitId) {
+            baseWhere.maisonTransitId = maisonTransitId;
+        }
+
+        if (regimeId) {
+            baseWhere.regimeId = regimeId;
+        }
+
+        // Récupérer les statistiques pour chaque période
+        const chartData: StatisticsDataPointDto[] = await Promise.all(
+            periodsData.map(async (period) => {
+                const periodWhere: Prisma.DeclarationWhereInput = {
+                    ...baseWhere,
+                    dateDeclaration: {
+                        gte: period.dateDebut,
+                        lte: period.dateFin,
+                    },
+                };
+
+                const [total, apurees, nonApurees] = await Promise.all([
+                    this.prisma.declaration.count({ where: periodWhere }),
+                    this.prisma.declaration.count({
+                        where: {
+                            ...periodWhere,
+                            statutApurement: { in: ['APURE_SE'] },
+                        },
+                    }),
+                    this.prisma.declaration.count({
+                        where: {
+                            ...periodWhere,
+                            OR: [
+                                { statutApurement: 'NON_APURE' },
+                                { statutApurement: null },
+                            ],
+                        },
+                    }),
+                ]);
+
+                return {
+                    period: period.label,
+                    declarations: total,
+                    apurees: apurees,
+                    nonApurees: nonApurees,
+                };
+            })
+        );
+
+        // Calculer les totaux
+        const totals = chartData.reduce(
+            (acc, item) => ({
+                totalDeclarations: acc.totalDeclarations + item.declarations,
+                declarationsApurees: acc.declarationsApurees + item.apurees,
+                declarationsNonApurees: acc.declarationsNonApurees + item.nonApurees,
+            }),
+            { totalDeclarations: 0, declarationsApurees: 0, declarationsNonApurees: 0 }
+        );
+
+        const tauxApurement = totals.totalDeclarations > 0
+            ? Math.round((totals.declarationsApurees / totals.totalDeclarations) * 10000) / 100
+            : 0;
+
+        return {
+            granularity,
+            dateDebut: startDate,
+            dateFin: endDate,
+            chartData,
+            totals: {
+                ...totals,
+                tauxApurement,
+            },
+        };
+    }
+
+    /**
+     * Calculer la date de début en fonction de la granularité et du nombre de périodes
+     */
+    private calculateStartDate(endDate: Date, granularity: TimeGranularity, periods: number): Date {
+        const startDate = new Date(endDate);
+
+        switch (granularity) {
+            case TimeGranularity.DAY:
+                startDate.setDate(startDate.getDate() - periods);
+                break;
+            case TimeGranularity.WEEK:
+                startDate.setDate(startDate.getDate() - (periods * 7));
+                break;
+            case TimeGranularity.MONTH:
+                startDate.setMonth(startDate.getMonth() - periods);
+                break;
+            case TimeGranularity.YEAR:
+                startDate.setFullYear(startDate.getFullYear() - periods);
+                break;
+        }
+
+        return startDate;
+    }
+
+    /**
+     * Générer les périodes entre deux dates selon la granularité
+     */
+    private generatePeriods(
+        startDate: Date,
+        endDate: Date,
+        granularity: TimeGranularity,
+    ): Array<{ label: string; dateDebut: Date; dateFin: Date }> {
+        const periods: Array<{ label: string; dateDebut: Date; dateFin: Date }> = [];
+        const current = new Date(startDate);
+
+        while (current <= endDate) {
+            const periodStart = new Date(current);
+            periodStart.setHours(0, 0, 0, 0);
+
+            let periodEnd: Date;
+            let label: string;
+
+            switch (granularity) {
+                case TimeGranularity.DAY:
+                    periodEnd = new Date(current);
+                    periodEnd.setHours(23, 59, 59, 999);
+                    label = current.toISOString().split('T')[0]; // YYYY-MM-DD
+                    current.setDate(current.getDate() + 1);
+                    break;
+
+                case TimeGranularity.WEEK:
+                    // Début de la semaine (lundi)
+                    const dayOfWeek = current.getDay();
+                    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+                    periodStart.setDate(current.getDate() + diffToMonday);
+                    periodEnd = new Date(periodStart);
+                    periodEnd.setDate(periodStart.getDate() + 6);
+                    periodEnd.setHours(23, 59, 59, 999);
+
+                    const weekNum = this.getWeekNumber(periodStart);
+                    label = `S${weekNum} ${periodStart.getFullYear()}`;
+                    current.setDate(current.getDate() + 7);
+                    break;
+
+                case TimeGranularity.MONTH:
+                    periodStart.setDate(1);
+                    periodEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0);
+                    periodEnd.setHours(23, 59, 59, 999);
+                    label = this.getMonthLabel(current.getMonth(), current.getFullYear());
+                    current.setMonth(current.getMonth() + 1);
+                    break;
+
+                case TimeGranularity.YEAR:
+                    periodStart.setMonth(0, 1);
+                    periodEnd = new Date(current.getFullYear(), 11, 31);
+                    periodEnd.setHours(23, 59, 59, 999);
+                    label = String(current.getFullYear());
+                    current.setFullYear(current.getFullYear() + 1);
+                    break;
+
+                default:
+                    periodEnd = new Date(current);
+                    periodEnd.setHours(23, 59, 59, 999);
+                    label = current.toISOString().split('T')[0];
+                    current.setDate(current.getDate() + 1);
+            }
+
+            // Ne pas ajouter si la période dépasse la date de fin
+            if (periodStart <= endDate) {
+                periods.push({
+                    label,
+                    dateDebut: periodStart,
+                    dateFin: periodEnd > endDate ? endDate : periodEnd,
+                });
+            }
+        }
+
+        return periods;
+    }
+
+    /**
+     * Obtenir le numéro de semaine ISO
+     */
+    private getWeekNumber(date: Date): number {
+        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        const dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    }
+
+    /**
+     * Obtenir le label du mois en français
+     */
+    private getMonthLabel(monthIndex: number, year: number): string {
+        const months = [
+            'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+            'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+        ];
+        return `${months[monthIndex]} ${year}`;
     }
 }
