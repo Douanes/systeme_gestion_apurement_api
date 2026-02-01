@@ -498,7 +498,7 @@ export class OrdreMissionService {
                     ? {
                         id: omd.declaration.regime.id,
                         name: omd.declaration.regime.name,
-                        code: omd.declaration.regime.code,
+                        
                     }
                     : null,
                 maisonTransit: omd.declaration.maisonTransit
