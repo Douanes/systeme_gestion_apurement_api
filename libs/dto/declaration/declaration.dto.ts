@@ -1,6 +1,159 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsEnum, IsInt, IsString, IsDateString } from 'class-validator';
+import { IsOptional, IsEnum, IsInt, IsString, IsDateString, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
+
+/**
+ * Enum pour la granularité temporelle des statistiques
+ */
+export enum TimeGranularity {
+    DAY = 'day',
+    WEEK = 'week',
+    MONTH = 'month',
+    YEAR = 'year',
+}
+
+/**
+ * DTO pour les paramètres de statistiques des déclarations
+ */
+export class DeclarationStatisticsQueryDto {
+    @ApiPropertyOptional({
+        description: 'Granularité temporelle (jour, semaine, mois, année)',
+        enum: TimeGranularity,
+        example: TimeGranularity.MONTH,
+        default: TimeGranularity.MONTH,
+    })
+    @IsOptional()
+    @IsEnum(TimeGranularity)
+    granularity?: TimeGranularity = TimeGranularity.MONTH;
+
+    @ApiPropertyOptional({
+        description: 'Date de début de la période (YYYY-MM-DD)',
+        example: '2024-01-01',
+    })
+    @IsOptional()
+    @IsDateString()
+    dateDebut?: string;
+
+    @ApiPropertyOptional({
+        description: 'Date de fin de la période (YYYY-MM-DD)',
+        example: '2024-12-31',
+    })
+    @IsOptional()
+    @IsDateString()
+    dateFin?: string;
+
+    @ApiPropertyOptional({
+        description: 'Filtrer par ID de maison de transit',
+        example: 1,
+    })
+    @IsOptional()
+    @IsInt()
+    @Type(() => Number)
+    maisonTransitId?: number;
+
+    @ApiPropertyOptional({
+        description: 'Filtrer par ID de régime',
+        example: 1,
+    })
+    @IsOptional()
+    @IsInt()
+    @Type(() => Number)
+    regimeId?: number;
+
+    @ApiPropertyOptional({
+        description: 'Nombre de périodes à retourner (par défaut 12)',
+        example: 12,
+        default: 12,
+        minimum: 1,
+        maximum: 365,
+    })
+    @IsOptional()
+    @IsInt()
+    @Type(() => Number)
+    @Min(1)
+    @Max(365)
+    periods?: number = 12;
+}
+
+/**
+ * DTO pour un point de données dans les statistiques (format chartData)
+ */
+export class StatisticsDataPointDto {
+    @ApiProperty({
+        description: 'Label de la période (ex: "Janvier", "S12 2024", "2024-01", etc.)',
+        example: 'Janvier',
+    })
+    period: string;
+
+    @ApiProperty({
+        description: 'Nombre total de déclarations',
+        example: 150,
+    })
+    declarations: number;
+
+    @ApiProperty({
+        description: 'Nombre de déclarations apurées',
+        example: 100,
+    })
+    apurees: number;
+
+    @ApiProperty({
+        description: 'Nombre de déclarations non apurées',
+        example: 50,
+    })
+    nonApurees: number;
+}
+
+/**
+ * DTO pour la réponse des statistiques des déclarations
+ */
+export class DeclarationStatisticsResponseDto {
+    @ApiProperty({
+        description: 'Granularité utilisée',
+        enum: TimeGranularity,
+        example: TimeGranularity.MONTH,
+    })
+    granularity: TimeGranularity;
+
+    @ApiProperty({
+        description: 'Date de début de la période analysée',
+        example: '2024-01-01T00:00:00.000Z',
+    })
+    dateDebut: Date;
+
+    @ApiProperty({
+        description: 'Date de fin de la période analysée',
+        example: '2024-12-31T23:59:59.999Z',
+    })
+    dateFin: Date;
+
+    @ApiProperty({
+        description: 'Données des statistiques par période (format chartData)',
+        type: [StatisticsDataPointDto],
+        example: [
+            { period: 'Janvier', declarations: 150, apurees: 100, nonApurees: 50 },
+            { period: 'Février', declarations: 180, apurees: 120, nonApurees: 60 },
+            { period: 'Mars', declarations: 200, apurees: 150, nonApurees: 50 },
+        ],
+    })
+    chartData: StatisticsDataPointDto[];
+
+    @ApiProperty({
+        description: 'Totaux sur toute la période',
+        example: {
+            totalDeclarations: 1200,
+            declarationsApurees: 800,
+            declarationsNonApurees: 400,
+            tauxApurement: 66.67,
+        },
+    })
+    totals: {
+        totalDeclarations: number;
+        declarationsApurees: number;
+        declarationsNonApurees: number;
+        tauxApurement: number;
+    };
+}
 
 /**
  * Enum pour le filtre de statut de livraison des parcelles
