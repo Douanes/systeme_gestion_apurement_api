@@ -269,44 +269,89 @@ export class OrdreMissionService {
                 }
             }
 
-            // 5. Créer les conteneurs
+            // 5. Créer les conteneurs et les liaisons
             if (createOrdreMissionDto.conteneurs?.length) {
-                await tx.conteneur.createMany({
-                    data: createOrdreMissionDto.conteneurs.map((cont) => ({
-                        ordreMissionId: ordre.id,
-                        numConteneur: cont.numConteneur,
-                        numPlomb: cont.numPlomb,
-                        driverName: cont.driverName,
-                        driverNationality: cont.driverNationality,
-                        phone: cont.phone,
-                    })),
-                });
+                for (const cont of createOrdreMissionDto.conteneurs) {
+                    // Créer ou récupérer le conteneur
+                    const conteneur = await tx.conteneur.upsert({
+                        where: { numConteneur: cont.numConteneur },
+                        update: {
+                            deletedAt: null,
+                            updatedAt: new Date(),
+                        },
+                        create: {
+                            numConteneur: cont.numConteneur,
+                        },
+                    });
+
+                    // Créer la liaison avec les infos du voyage
+                    await tx.ordreMissionConteneur.create({
+                        data: {
+                            ordreMissionId: ordre.id,
+                            conteneurId: conteneur.id,
+                            numPlomb: cont.numPlomb,
+                            driverName: cont.driverName,
+                            driverNationality: cont.driverNationality,
+                            phone: cont.phone,
+                        },
+                    });
+                }
             }
 
-            // 6. Créer les camions
+            // 6. Créer les camions et les liaisons
             if (createOrdreMissionDto.camions?.length) {
-                await tx.camion.createMany({
-                    data: createOrdreMissionDto.camions.map((cam) => ({
-                        ordreMissionId: ordre.id,
-                        immatriculation: cam.immatriculation,
-                        driverName: cam.driverName,
-                        driverNationality: cam.driverNationality,
-                        phone: cam.phone,
-                    })),
-                });
+                for (const cam of createOrdreMissionDto.camions) {
+                    // Créer ou récupérer le camion
+                    const camion = await tx.camion.upsert({
+                        where: { immatriculation: cam.immatriculation },
+                        update: {
+                            deletedAt: null,
+                            updatedAt: new Date(),
+                        },
+                        create: {
+                            immatriculation: cam.immatriculation,
+                        },
+                    });
+
+                    // Créer la liaison avec les infos du voyage
+                    await tx.ordreMissionCamion.create({
+                        data: {
+                            ordreMissionId: ordre.id,
+                            camionId: camion.id,
+                            driverName: cam.driverName,
+                            driverNationality: cam.driverNationality,
+                            phone: cam.phone,
+                        },
+                    });
+                }
             }
 
-            // 7. Créer les voitures
+            // 7. Créer les voitures et les liaisons
             if (createOrdreMissionDto.voitures?.length) {
-                await tx.voiture.createMany({
-                    data: createOrdreMissionDto.voitures.map((voit) => ({
-                        ordreMissionId: ordre.id,
-                        chassis: voit.chassis,
-                        driverName: voit.driverName,
-                        driverNationality: voit.driverNationality,
-                        phone: voit.phone,
-                    })),
-                });
+                for (const voit of createOrdreMissionDto.voitures) {
+                    // Créer ou récupérer la voiture
+                    const voiture = await tx.voiture.upsert({
+                        where: { chassis: voit.chassis },
+                        update: {
+                            deletedAt: null,
+                            updatedAt: new Date(),
+                        },
+                        create: {
+                            chassis: voit.chassis,
+                        },
+                    });
+
+                    // Créer la liaison avec les infos du voyage
+                    await tx.ordreMissionVoiture.create({
+                        data: {
+                            ordreMissionId: ordre.id,
+                            voitureId: voiture.id,
+                            driverName: voit.driverName,
+                            driverNationality: voit.driverNationality,
+                            phone: voit.phone,
+                        },
+                    });
+                }
             }
 
             return ordre;
@@ -471,9 +516,18 @@ export class OrdreMissionService {
                         },
                     },
                 },
-                conteneurs: { where: { deletedAt: null } },
-                camions: { where: { deletedAt: null } },
-                voitures: { where: { deletedAt: null } },
+                conteneurs: {
+                    where: { deletedAt: null },
+                    include: { conteneur: true },
+                },
+                camions: {
+                    where: { deletedAt: null },
+                    include: { camion: true },
+                },
+                voitures: {
+                    where: { deletedAt: null },
+                    include: { voiture: true },
+                },
             },
         });
 
@@ -556,23 +610,23 @@ export class OrdreMissionService {
                 })),
             })),
             conteneurs: ordreMission.conteneurs.map((c) => ({
-                id: c.id,
-                numConteneur: c.numConteneur,
+                id: c.conteneur.id,
+                numConteneur: c.conteneur.numConteneur,
                 numPlomb: c.numPlomb,
                 driverName: c.driverName,
                 driverNationality: c.driverNationality,
                 phone: c.phone,
             })),
             camions: ordreMission.camions.map((c) => ({
-                id: c.id,
-                immatriculation: c.immatriculation,
+                id: c.camion.id,
+                immatriculation: c.camion.immatriculation,
                 driverName: c.driverName,
                 driverNationality: c.driverNationality,
                 phone: c.phone,
             })),
             voitures: ordreMission.voitures.map((v) => ({
-                id: v.id,
-                chassis: v.chassis,
+                id: v.voiture.id,
+                chassis: v.voiture.chassis,
                 driverName: v.driverName,
                 driverNationality: v.driverNationality,
                 phone: v.phone,
@@ -777,38 +831,40 @@ export class OrdreMissionService {
                 }
             }
 
-            // 4. Si des conteneurs sont fournis, utiliser upsert pour chaque conteneur
+            // 4. Si des conteneurs sont fournis, utiliser les tables de liaison
             if (updateOrdreMissionDto.conteneurs !== undefined) {
-                // D'abord, soft delete tous les anciens conteneurs de cet ordre
-                await tx.conteneur.updateMany({
+                // D'abord, soft delete toutes les anciennes liaisons conteneurs
+                await tx.ordreMissionConteneur.updateMany({
                     where: {
                         ordreMissionId: id,
                         deletedAt: null,
                     },
                     data: {
                         deletedAt: new Date(),
-                        ordreMissionId: null, // Détacher de l'ordre
                     },
                 });
 
-                // Ensuite, upsert chaque conteneur
+                // Ensuite, créer les nouvelles liaisons
                 for (const cont of updateOrdreMissionDto.conteneurs) {
-                    await tx.conteneur.upsert({
+                    // Upsert le conteneur (créer s'il n'existe pas)
+                    const conteneur = await tx.conteneur.upsert({
                         where: {
                             numConteneur: cont.numConteneur,
                         },
                         update: {
-                            ordreMissionId: id,
-                            numPlomb: cont.numPlomb,
-                            driverName: cont.driverName,
-                            driverNationality: cont.driverNationality,
-                            phone: cont.phone,
-                            deletedAt: null, // Réactiver si soft deleted
+                            deletedAt: null,
                             updatedAt: new Date(),
                         },
                         create: {
-                            ordreMissionId: id,
                             numConteneur: cont.numConteneur,
+                        },
+                    });
+
+                    // Créer la liaison avec les infos du conducteur
+                    await tx.ordreMissionConteneur.create({
+                        data: {
+                            ordreMissionId: id,
+                            conteneurId: conteneur.id,
                             numPlomb: cont.numPlomb,
                             driverName: cont.driverName,
                             driverNationality: cont.driverNationality,
@@ -818,37 +874,40 @@ export class OrdreMissionService {
                 }
             }
 
-            // 5. Si des camions sont fournis, utiliser upsert pour chaque camion
+            // 5. Si des camions sont fournis, utiliser les tables de liaison
             if (updateOrdreMissionDto.camions !== undefined) {
-                // D'abord, soft delete tous les anciens camions de cet ordre
-                await tx.camion.updateMany({
+                // D'abord, soft delete toutes les anciennes liaisons camions
+                await tx.ordreMissionCamion.updateMany({
                     where: {
                         ordreMissionId: id,
                         deletedAt: null,
                     },
                     data: {
                         deletedAt: new Date(),
-                        ordreMissionId: null, // Détacher de l'ordre
                     },
                 });
 
-                // Ensuite, upsert chaque camion
+                // Ensuite, créer les nouvelles liaisons
                 for (const cam of updateOrdreMissionDto.camions) {
-                    await tx.camion.upsert({
+                    // Upsert le camion (créer s'il n'existe pas)
+                    const camion = await tx.camion.upsert({
                         where: {
                             immatriculation: cam.immatriculation,
                         },
                         update: {
-                            ordreMissionId: id,
-                            driverName: cam.driverName,
-                            driverNationality: cam.driverNationality,
-                            phone: cam.phone,
-                            deletedAt: null, // Réactiver si soft deleted
+                            deletedAt: null,
                             updatedAt: new Date(),
                         },
                         create: {
-                            ordreMissionId: id,
                             immatriculation: cam.immatriculation,
+                        },
+                    });
+
+                    // Créer la liaison avec les infos du conducteur
+                    await tx.ordreMissionCamion.create({
+                        data: {
+                            ordreMissionId: id,
+                            camionId: camion.id,
                             driverName: cam.driverName,
                             driverNationality: cam.driverNationality,
                             phone: cam.phone,
@@ -857,37 +916,40 @@ export class OrdreMissionService {
                 }
             }
 
-            // 6. Si des voitures sont fournies, utiliser upsert pour chaque voiture
+            // 6. Si des voitures sont fournies, utiliser les tables de liaison
             if (updateOrdreMissionDto.voitures !== undefined) {
-                // D'abord, soft delete toutes les anciennes voitures de cet ordre
-                await tx.voiture.updateMany({
+                // D'abord, soft delete toutes les anciennes liaisons voitures
+                await tx.ordreMissionVoiture.updateMany({
                     where: {
                         ordreMissionId: id,
                         deletedAt: null,
                     },
                     data: {
                         deletedAt: new Date(),
-                        ordreMissionId: null, // Détacher de l'ordre
                     },
                 });
 
-                // Ensuite, upsert chaque voiture
+                // Ensuite, créer les nouvelles liaisons
                 for (const voit of updateOrdreMissionDto.voitures) {
-                    await tx.voiture.upsert({
+                    // Upsert la voiture (créer si elle n'existe pas)
+                    const voiture = await tx.voiture.upsert({
                         where: {
                             chassis: voit.chassis,
                         },
                         update: {
-                            ordreMissionId: id,
-                            driverName: voit.driverName,
-                            driverNationality: voit.driverNationality,
-                            phone: voit.phone,
-                            deletedAt: null, // Réactiver si soft deleted
+                            deletedAt: null,
                             updatedAt: new Date(),
                         },
                         create: {
-                            ordreMissionId: id,
                             chassis: voit.chassis,
+                        },
+                    });
+
+                    // Créer la liaison avec les infos du conducteur
+                    await tx.ordreMissionVoiture.create({
+                        data: {
+                            ordreMissionId: id,
+                            voitureId: voiture.id,
                             driverName: voit.driverName,
                             driverNationality: voit.driverNationality,
                             phone: voit.phone,
