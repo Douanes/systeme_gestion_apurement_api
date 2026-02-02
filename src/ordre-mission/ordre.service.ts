@@ -45,7 +45,7 @@ export class OrdreMissionService {
         // Construire le préfixe complet (ex: MTD-2025-)
         const fullPrefix = `${prefix}-${currentYear}-`;
 
-        // Trouver le dernier numéro avec ce préfixe
+        // Trouver le dernier numéro avec ce préfixe (inclure tous les ordres, même supprimés)
         const lastOrder = await this.prisma.ordreMission.findFirst({
             where: {
                 number: {
@@ -74,10 +74,26 @@ export class OrdreMissionService {
         }
 
         // Formater le compteur sur 6 chiffres (ex: 000001)
-        const counterStr = counter.toString().padStart(6, '0');
+        let counterStr = counter.toString().padStart(6, '0');
+        let orderNumber = `${fullPrefix}${counterStr}`;
+
+        // Vérifier que le numéro n'existe pas déjà (sécurité supplémentaire)
+        let existingOrder = await this.prisma.ordreMission.findFirst({
+            where: { number: orderNumber },
+        });
+
+        // Si le numéro existe déjà, incrémenter jusqu'à trouver un numéro disponible
+        while (existingOrder) {
+            counter++;
+            counterStr = counter.toString().padStart(6, '0');
+            orderNumber = `${fullPrefix}${counterStr}`;
+            existingOrder = await this.prisma.ordreMission.findFirst({
+                where: { number: orderNumber },
+            });
+        }
 
         // Retourner le numéro complet (ex: MTD-2025-000001)
-        return `${fullPrefix}${counterStr}`;
+        return orderNumber;
     }
 
     /**
@@ -544,16 +560,22 @@ export class OrdreMissionService {
                 numConteneur: c.numConteneur,
                 numPlomb: c.numPlomb,
                 driverName: c.driverName,
+                driverNationality: c.driverNationality,
+                phone: c.phone,
             })),
             camions: ordreMission.camions.map((c) => ({
                 id: c.id,
                 immatriculation: c.immatriculation,
                 driverName: c.driverName,
+                driverNationality: c.driverNationality,
+                phone: c.phone,
             })),
             voitures: ordreMission.voitures.map((v) => ({
                 id: v.id,
                 chassis: v.chassis,
                 driverName: v.driverName,
+                driverNationality: v.driverNationality,
+                phone: v.phone,
             })),
         };
     }

@@ -782,14 +782,15 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
                 numConteneur: 'MSCU1234567',
                 numPlomb: 'PLB-2024-001',
                 driverName: 'Amadou Fall',
+                driverNationality: 'Sénégalais',
+                phone: '+221 77 123 45 67',
             },
         ],
     })
     conteneurs?: Array<{
         id: number;
         numConteneur: string;
-        numPlomb?: string | null;
-        driverName?: string | null;
+        driverName?: string | null;  // Changed to allow null
     }>;
 
     @ApiPropertyOptional({
@@ -801,13 +802,17 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
                 id: 1,
                 immatriculation: 'DK-1234-AB',
                 driverName: 'Moussa Diop',
+                driverNationality: 'Sénégalais',
+                phone: '+221 77 234 56 78',
             },
         ],
     })
     camions?: Array<{
         id: number;
         immatriculation: string;
-        driverName?: string | null;  // Changed to allow null
+        driverName?: string | null;
+        driverNationality?: string | null;
+        phone?: string | null;
     }>;
 
     @ApiPropertyOptional({
@@ -819,12 +824,16 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
                 id: 1,
                 chassis: 'VF1KZ0G0H12345678',
                 driverName: 'Fatou Sow',
+                driverNationality: 'Sénégalaise',
+                phone: '+221 77 345 67 89',
             },
         ],
     })
     voitures?: Array<{
         id: number;
         chassis: string;
-        driverName?: string | null;  // Changed to allow null
+        driverName?: string | null;
+        driverNationality?: string | null;
+        phone?: string | null;
     }>;
 }
