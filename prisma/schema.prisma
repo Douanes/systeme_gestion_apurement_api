@@ -237,9 +237,9 @@ model OrdreMission {
   maisonTransit  MaisonTransit?            @relation(fields: [maisonTransitId], references: [id], onDelete: SetNull)
   ecouade        Escouade?                 @relation(fields: [ecouadeId], references: [id], onDelete: SetNull)
   declarations   OrdreMissionDeclaration[]
-  camions        Camion[]
-  conteneurs     Conteneur[]
-  voitures       Voiture[]
+  conteneurs     OrdreMissionConteneur[]
+  camions        OrdreMissionCamion[]
+  voitures       OrdreMissionVoiture[]
 
   @@map("ordres_missions")
 }
@@ -347,52 +347,94 @@ model Colis {
 }
 
 model Camion {
-  id                Int       @id @default(autoincrement())
-  ordreMissionId    Int?      @map("ordre_mission_id")
-  immatriculation   String    @unique
-  driverName        String?   @map("driver_name")
-  driverNationality String?   @map("driver_nationality")
-  phone             String?   @map("ip_address")
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
-  deletedAt         DateTime? @map("deleted_at")
+  id              Int       @id @default(autoincrement())
+  immatriculation String    @unique
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
 
-  ordreMission OrdreMission? @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
+  ordreMissions OrdreMissionCamion[]
 
   @@map("transports")
 }
 
-model Conteneur {
+model OrdreMissionCamion {
   id                Int       @id @default(autoincrement())
-  ordreMissionId    Int?      @map("ordre_mission_id")
-  numConteneur      String    @unique @map("num_conteneur")
-  numPlomb      String?    @map("num_plomb")
+  ordreMissionId    Int       @map("ordre_mission_id")
+  camionId          Int       @map("camion_id")
   driverName        String?   @map("driver_name")
   driverNationality String?   @map("driver_nationality")
-  phone             String?   @map("ip_address")
+  phone             String?   @map("phone")
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
   deletedAt         DateTime? @map("deleted_at")
 
-  ordreMission OrdreMission? @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
+  ordreMission OrdreMission @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
+  camion       Camion       @relation(fields: [camionId], references: [id], onDelete: Cascade)
+
+  @@unique([ordreMissionId, camionId])
+  @@map("ordre_mission_camions")
+}
+
+model Conteneur {
+  id           Int       @id @default(autoincrement())
+  numConteneur String    @unique @map("num_conteneur")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  ordreMissions OrdreMissionConteneur[]
 
   @@map("conteneurs")
 }
 
-model Voiture {
+model OrdreMissionConteneur {
   id                Int       @id @default(autoincrement())
-  ordreMissionId    Int?      @map("ordre_mission_id")
-  chassis           String    @unique @map("chassis")
+  ordreMissionId    Int       @map("ordre_mission_id")
+  conteneurId       Int       @map("conteneur_id")
+  numPlomb          String?   @map("num_plomb")
   driverName        String?   @map("driver_name")
   driverNationality String?   @map("driver_nationality")
-  phone             String?   @map("ip_address")
+  phone             String?   @map("phone")
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
   deletedAt         DateTime? @map("deleted_at")
 
-  ordreMission OrdreMission? @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
+  ordreMission OrdreMission @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
+  conteneur    Conteneur    @relation(fields: [conteneurId], references: [id], onDelete: Cascade)
+
+  @@unique([ordreMissionId, conteneurId])
+  @@map("ordre_mission_conteneurs")
+}
+
+model Voiture {
+  id        Int       @id @default(autoincrement())
+  chassis   String    @unique @map("chassis")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  ordreMissions OrdreMissionVoiture[]
 
   @@map("voitures")
+}
+
+model OrdreMissionVoiture {
+  id                Int       @id @default(autoincrement())
+  ordreMissionId    Int       @map("ordre_mission_id")
+  voitureId         Int       @map("voiture_id")
+  driverName        String?   @map("driver_name")
+  driverNationality String?   @map("driver_nationality")
+  phone             String?   @map("phone")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  ordreMission OrdreMission @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
+  voiture      Voiture      @relation(fields: [voitureId], references: [id], onDelete: Cascade)
+
+  @@unique([ordreMissionId, voitureId])
+  @@map("ordre_mission_voitures")
 }
 
 model AuditLog {
