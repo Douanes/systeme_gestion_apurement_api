@@ -592,6 +592,20 @@ export class OrdreMissionResponseDto {
     updatedAt: Date;
 
     @ApiPropertyOptional({
+        description: 'Liste des déclarations liées à cet ordre de mission',
+        type: 'array',
+        isArray: true,
+        example: [
+            { id: 1, numeroDeclaration: 'DECL-2024-001' },
+            { id: 2, numeroDeclaration: 'DECL-2024-002' },
+        ],
+    })
+    declarations?: Array<{
+        id: number;
+        numeroDeclaration: string;
+    }>;
+
+    @ApiPropertyOptional({
         description: 'Nombre de parcelles (ordres de mission) créées pour les déclarations de cet ordre',
         example: 2,
     })

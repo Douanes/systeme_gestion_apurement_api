@@ -426,6 +426,7 @@ export class OrdreMissionService {
                 if (declarationIds.length === 0) {
                     return {
                         ...this.toResponseDto(ordre),
+                        declarations: [],
                         nbreParcelles: 0,
                         statutLivraisonParcelle: undefined,
                     };
@@ -467,6 +468,10 @@ export class OrdreMissionService {
 
                 return {
                     ...this.toResponseDto(ordre),
+                    declarations: ordre.declarations.map((d) => ({
+                        id: d.declaration.id,
+                        numeroDeclaration: d.declaration.numeroDeclaration,
+                    })),
                     nbreParcelles: maxParcelles,
                     statutLivraisonParcelle,
                 };
