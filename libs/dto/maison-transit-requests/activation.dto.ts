@@ -1,5 +1,5 @@
-import { IsNotEmpty, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class ActivateAccountDto {
     @ApiProperty({
@@ -51,16 +51,4 @@ export class ActivateAccountDto {
     @IsString({ message: 'Le téléphone doit être une chaîne de caractères' })
     @IsNotEmpty({ message: 'Le téléphone est requis' })
     phone: string;
-
-    @ApiPropertyOptional({
-        description: 'Code unique de la maison de transit (3-10 caractères, majuscules et chiffres). Si non fourni, un code sera généré automatiquement.',
-        example: 'MTD',
-        maxLength: 10,
-    })
-    @IsString({ message: 'Le code doit être une chaîne de caractères' })
-    @MaxLength(10, { message: 'Le code doit contenir au maximum 10 caractères' })
-    @Matches(/^[A-Z0-9]+$/, {
-        message: 'Le code doit contenir uniquement des lettres majuscules et des chiffres',
-    })
-    code: string;
 }

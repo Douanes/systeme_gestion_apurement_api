@@ -175,6 +175,7 @@ export class MaisonTransitRequestsService {
                     address: dto.address,
                     ninea: dto.ninea,
                     registreCommerce: dto.registreCommerce,
+                    code: dto.code,
                     status: RequestStatus.EN_REVISION,
                 },
             });
@@ -365,22 +366,10 @@ export class MaisonTransitRequestsService {
                 },
             });
 
-            // Créer la maison de transit
-            const mtCode = dto.code || `MT-${request.ninea?.substring(0, 8) || user.id}`;
-
-            // Vérifier l'unicité du code
-            const existingMt = await tx.maisonTransit.findUnique({
-                where: { code: mtCode },
-            });
-            if (existingMt) {
-                throw new ConflictException(
-                    `Le code "${mtCode}" est déjà utilisé par une autre maison de transit`,
-                );
-            }
-
+            // Créer la maison de transit avec le code saisi lors de la soumission
             const maisonTransit = await tx.maisonTransit.create({
                 data: {
-                    code: mtCode,
+                    code: request.code!,
                     name: request.companyName,
                     address: request.address,
                     phone: request.phone,
