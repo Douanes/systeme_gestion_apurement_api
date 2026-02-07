@@ -8,6 +8,7 @@ import { OrdreMission, StatutOrdreMission as PrismaStatutOrdreMission, StatutApu
 import {
     CreateOrdreMissionDto,
     UpdateOrdreMissionDto,
+    ChangeStatutOrdreMissionDto,
     OrdreMissionResponseDto,
     OrdreMissionWithRelationsDto,
     StatutOrdreMission,
@@ -365,6 +366,7 @@ export class OrdreMissionService {
      */
     async findAll(
         paginationQuery: OrdreMissionPaginationQueryDto,
+        currentUser?: { role: string; maisonTransitIds: number[] },
     ): Promise<PaginatedResponseDto<OrdreMissionResponseDto>> {
         const {
             page = 1,
@@ -381,6 +383,15 @@ export class OrdreMissionService {
 
         const skip = (page - 1) * limit;
         const where: any = { deletedAt: null };
+
+        // Filtrage automatique par maison de transit pour TRANSITAIRE/DECLARANT
+        if (currentUser && !['ADMIN', 'AGENT', 'SUPERVISEUR'].includes(currentUser.role)) {
+            if (currentUser.maisonTransitIds.length > 0) {
+                where.maisonTransitId = { in: currentUser.maisonTransitIds };
+            } else {
+                where.maisonTransitId = -1; // Aucun résultat
+            }
+        }
 
         if (statut) where.statut = statut;
         if (agentId) where.agentEscorteurId = agentId;
@@ -970,6 +981,33 @@ export class OrdreMissionService {
     }
 
     /**
+     * Modifier le statut d'un ordre de mission
+     */
+    async changeStatut(
+        id: number,
+        dto: ChangeStatutOrdreMissionDto,
+    ): Promise<OrdreMissionResponseDto> {
+        const ordreMission = await this.prisma.ordreMission.findUnique({
+            where: { id },
+        });
+
+        if (!ordreMission || ordreMission.deletedAt) {
+            throw new NotFoundException(
+                `Ordre de mission avec l'ID ${id} non trouvé`,
+            );
+        }
+
+        const updated = await this.prisma.ordreMission.update({
+            where: { id },
+            data: {
+                statut: dto.statut as any as PrismaStatutOrdreMission,
+            },
+        });
+
+        return this.toResponseDto(updated);
+    }
+
+    /**
      * Supprimer un ordre (soft delete)
      */
     async remove(id: number): Promise<void> {
@@ -1059,6 +1097,7 @@ export class OrdreMissionService {
      */
     async findNonApuresForAudit(
         query: AuditNonApuresQueryDto,
+        currentUser?: { role: string; maisonTransitIds: number[] },
     ): Promise<PaginatedResponseDto<OrdreMissionResponseDto & { joursDepuisOrdre: number }>> {
         const {
             page = 1,
@@ -1084,7 +1123,14 @@ export class OrdreMissionService {
             },
         };
 
-        if (maisonTransitId) {
+        // Filtrage automatique par maison de transit pour TRANSITAIRE/DECLARANT
+        if (currentUser && !['ADMIN', 'AGENT', 'SUPERVISEUR'].includes(currentUser.role)) {
+            if (currentUser.maisonTransitIds.length > 0) {
+                where.maisonTransitId = { in: currentUser.maisonTransitIds };
+            } else {
+                where.maisonTransitId = -1;
+            }
+        } else if (maisonTransitId) {
             where.maisonTransitId = maisonTransitId;
         }
 

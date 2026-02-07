@@ -38,13 +38,20 @@ export class EscouadeService {
     /**
      * Transform Prisma Escouade with relations to EscouadeWithRelationsDto
      */
-    private toResponseDtoWithRelations(escouade: any): EscouadeWithRelationsDto {
-        return {
+    private toResponseDtoWithRelations(escouade: any, includeTotalAgents = false): EscouadeWithRelationsDto {
+        const dto: EscouadeWithRelationsDto = {
             ...this.toResponseDto(escouade),
             chef: escouade.chef || null,
             adjoint: escouade.adjoint || null,
             escouadeAgents: escouade.escouadeAgents || undefined,
         };
+
+        // Ajouter le nombre d'agents si demandé (pour findAll)
+        if (includeTotalAgents && escouade._count?.escouadeAgents !== undefined) {
+            dto.totalAgents = escouade._count.escouadeAgents;
+        }
+
+        return dto;
     }
 
     /**
@@ -132,6 +139,11 @@ export class EscouadeService {
                 include: {
                     chef: true,
                     adjoint: true,
+                    _count: {
+                        select: {
+                            escouadeAgents: true,
+                        },
+                    },
                 },
             }),
             this.prisma.escouade.count({ where }),
@@ -140,7 +152,7 @@ export class EscouadeService {
         const totalPages = Math.ceil(total / limit);
 
         return {
-            data: escouades.map((escouade) => this.toResponseDtoWithRelations(escouade)),
+            data: escouades.map((escouade) => this.toResponseDtoWithRelations(escouade, true)),
             meta: {
                 page,
                 limit,
@@ -169,6 +181,11 @@ export class EscouadeService {
                         agent: true,
                     },
                 },
+                _count: {
+                    select: {
+                        escouadeAgents: true,
+                    },
+                },
             }
         });
 
@@ -176,7 +193,7 @@ export class EscouadeService {
             throw new NotFoundException(`Escouade avec l'ID ${id} non trouvée`);
         }
 
-        return this.toResponseDtoWithRelations(escouade);
+        return this.toResponseDtoWithRelations(escouade, true);
     }
 
     /**
@@ -263,44 +280,75 @@ export class EscouadeService {
     }
 
     /**
-     * Ajouter un agent à l'escouade
+     * Ajouter plusieurs agents à l'escouade (un agent ne peut appartenir qu'à une seule escouade)
      */
-    async addAgent(escouadeId: number, agentId: number): Promise<void> {
-        // Vérifier que l'escouade existe
+    async addAgents(
+        escouadeId: number,
+        agentIds: number[],
+    ): Promise<{
+        added: Array<{ agentId: number; firstname: string; lastname: string }>;
+        notAdded: Array<{ agentId: number; reason: string }>;
+    }> {
         await this.findOne(escouadeId);
 
-        // Vérifier que l'agent existe
-        const agent = await this.prisma.agent.findUnique({
-            where: { id: agentId },
-        });
+        const added: Array<{ agentId: number; firstname: string; lastname: string }> = [];
+        const notAdded: Array<{ agentId: number; reason: string }> = [];
 
-        if (!agent) {
-            throw new NotFoundException(`Agent avec l'ID ${agentId} non trouvé`);
-        }
+        for (const agentId of agentIds) {
+            // Vérifier que l'agent existe
+            const agent = await this.prisma.agent.findUnique({
+                where: { id: agentId },
+            });
 
-        // Vérifier que l'agent n'est pas déjà dans l'escouade
-        const existingMember = await this.prisma.escouadeAgents.findUnique({
-            where: {
-                escouadeId_agentId: {
-                    escouadeId,
-                    agentId,
+            if (!agent) {
+                notAdded.push({ agentId, reason: 'Agent non trouvé' });
+                continue;
+            }
+
+            // Vérifier que l'agent n'est pas déjà dans cette escouade
+            const existingInThis = await this.prisma.escouadeAgents.findUnique({
+                where: {
+                    escouadeId_agentId: { escouadeId, agentId },
                 },
-            },
-        });
+            });
 
-        if (existingMember) {
-            throw new ConflictException(
-                `L'agent est déjà membre de cette escouade`,
-            );
+            if (existingInThis) {
+                notAdded.push({
+                    agentId,
+                    reason: 'Déjà membre de cette escouade',
+                });
+                continue;
+            }
+
+            // Vérifier que l'agent n'appartient pas à une autre escouade
+            const existingInOther = await this.prisma.escouadeAgents.findFirst({
+                where: { agentId },
+                include: {
+                    escouade: { select: { name: true } },
+                },
+            });
+
+            if (existingInOther) {
+                notAdded.push({
+                    agentId,
+                    reason: `Déjà membre de l'escouade "${existingInOther.escouade.name}"`,
+                });
+                continue;
+            }
+
+            // Ajouter l'agent
+            await this.prisma.escouadeAgents.create({
+                data: { escouadeId, agentId },
+            });
+
+            added.push({
+                agentId,
+                firstname: agent.firstname,
+                lastname: agent.lastname,
+            });
         }
 
-        // Ajouter l'agent
-        await this.prisma.escouadeAgents.create({
-            data: {
-                escouadeId,
-                agentId,
-            },
-        });
+        return { added, notAdded };
     }
 
     /**

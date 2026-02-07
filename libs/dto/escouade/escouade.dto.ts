@@ -4,10 +4,12 @@ import {
     IsNotEmpty,
     IsOptional,
     IsInt,
+    IsArray,
     IsDateString,
     MaxLength,
     MinLength,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateEscouadeDto {
     @ApiProperty({
@@ -128,16 +130,24 @@ export class EscouadeWithRelationsDto extends EscouadeResponseDto {
         isArray: true,
     })
     escouadeAgents?: any[];
+
+    @ApiPropertyOptional({
+        description: 'Nombre total d\'agents dans l\'escouade',
+        example: 12,
+    })
+    totalAgents?: number;
 }
 
-export class AddAgentToEscouadeDto {
+export class AddAgentsToEscouadeDto {
     @ApiProperty({
-        description: 'ID de l\'agent à ajouter',
-        example: 1,
+        description: 'Liste des IDs des agents à ajouter',
+        example: [1, 2, 3],
+        type: [Number],
     })
-    @IsInt()
-    @IsNotEmpty({ message: 'L\'ID de l\'agent est requis' })
-    agentId: number;
+    @IsArray({ message: 'agentIds doit être un tableau' })
+    @IsInt({ each: true, message: 'Chaque ID doit être un entier' })
+    @Type(() => Number)
+    agentIds: number[];
 }
 
 export class RemoveAgentFromEscouadeDto {

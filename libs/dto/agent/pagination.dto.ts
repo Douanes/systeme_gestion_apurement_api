@@ -78,6 +78,15 @@ export class AgentPaginationQueryDto {
     grade?: string;
 
     @ApiPropertyOptional({
+        description: 'Filtrer les agents non assignés à une escouade',
+        example: true,
+    })
+    @IsOptional()
+    @Type(() => Boolean)
+    @IsBoolean()
+    unassigned?: boolean;
+
+    @ApiPropertyOptional({
         description: 'Champ de tri',
         example: AgentSortField.CREATED_AT,
         enum: AgentSortField,

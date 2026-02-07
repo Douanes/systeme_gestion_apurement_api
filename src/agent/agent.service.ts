@@ -276,6 +276,7 @@ export class AgentService {
             isActive,
             officeId,
             grade,
+            unassigned,
             sortBy = 'createdAt',
             sortOrder = 'desc',
         } = paginationQuery;
@@ -299,6 +300,13 @@ export class AgentService {
         if (grade) {
             where.grade = {
                 contains: grade,
+            };
+        }
+
+        // Filtre pour les agents non assignés à une escouade
+        if (unassigned === true) {
+            where.escouadeAgents = {
+                none: {},
             };
         }
 

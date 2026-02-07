@@ -21,6 +21,7 @@ export class DeclarationService {
      */
     async findAll(
         query: DeclarationPaginationQueryDto,
+        currentUser?: { role: string; maisonTransitIds: number[] },
     ): Promise<PaginatedResponseDto<DeclarationWithOrdersResponseDto>> {
         const {
             page = 1,
@@ -44,14 +45,20 @@ export class DeclarationService {
             deletedAt: null,
         };
 
+        // Filtrage automatique par maison de transit pour TRANSITAIRE/DECLARANT
+        if (currentUser && !['ADMIN', 'AGENT', 'SUPERVISEUR'].includes(currentUser.role)) {
+            if (currentUser.maisonTransitIds.length > 0) {
+                where.maisonTransitId = { in: currentUser.maisonTransitIds };
+            } else {
+                where.maisonTransitId = -1;
+            }
+        } else if (maisonTransitId) {
+            where.maisonTransitId = maisonTransitId;
+        }
+
         // Filtre par recherche
         if (search) {
             where.numeroDeclaration = { contains: search };
-        }
-
-        // Filtres par relations
-        if (maisonTransitId) {
-            where.maisonTransitId = maisonTransitId;
         }
 
         if (depositaireId) {
