@@ -7,6 +7,8 @@ import {
     ValidateNested,
     IsEnum,
     IsUrl,
+    Matches,
+    MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -118,6 +120,19 @@ export class SubmitMaisonTransitRequestDto {
     @IsString({ message: 'Le registre de commerce doit être une chaîne de caractères' })
     @IsNotEmpty({ message: 'Le registre de commerce est requis' })
     registreCommerce: string;
+
+    @ApiProperty({
+        description: 'Code unique de la maison de transit (max 10 caractères, majuscules et chiffres)',
+        example: 'MTD',
+        maxLength: 10,
+    })
+    @IsString({ message: 'Le code doit être une chaîne de caractères' })
+    @IsNotEmpty({ message: 'Le code est requis' })
+    @MaxLength(10, { message: 'Le code doit contenir au maximum 10 caractères' })
+    @Matches(/^[A-Z0-9]+$/, {
+        message: 'Le code doit contenir uniquement des lettres majuscules et des chiffres',
+    })
+    code: string;
 
     @ApiProperty({
         description: 'Liste des documents uploadés (REGISTRE_COMMERCE, NINEA, CARTE_PROFESSIONNELLE obligatoires)',
