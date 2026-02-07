@@ -3,6 +3,7 @@ import {
     Get,
     Param,
     Query,
+    Request,
     ParseIntPipe,
     UseGuards,
 } from '@nestjs/common';
@@ -179,8 +180,9 @@ Récupère la liste paginée des déclarations avec leurs parcelles (ordres de m
     })
     async findAll(
         @Query() query: DeclarationPaginationQueryDto,
+        @Request() req,
     ): Promise<PaginatedResponseDto<DeclarationWithOrdersResponseDto>> {
-        return this.declarationService.findAll(query);
+        return this.declarationService.findAll(query, req.user);
     }
 
     @Get('statistics')

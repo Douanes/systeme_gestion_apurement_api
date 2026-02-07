@@ -76,6 +76,7 @@ export class MaisonTransitService {
      */
     async findAll(
         paginationQuery: MaisonTransitPaginationQueryDto,
+        currentUser?: { role: string; maisonTransitIds: number[] },
     ): Promise<PaginatedResponseDto<MaisonTransitResponseDto>> {
         const {
             page = 1,
@@ -92,6 +93,15 @@ export class MaisonTransitService {
         const where: any = {
             deletedAt: null,
         };
+
+        // Filtrage automatique pour TRANSITAIRE/DECLARANT : ne voir que leurs propres MT
+        if (currentUser && !['ADMIN', 'AGENT', 'SUPERVISEUR'].includes(currentUser.role)) {
+            if (currentUser.maisonTransitIds.length > 0) {
+                where.id = { in: currentUser.maisonTransitIds };
+            } else {
+                where.id = -1;
+            }
+        }
 
         // Filtre par statut actif
         if (isActive !== undefined) {

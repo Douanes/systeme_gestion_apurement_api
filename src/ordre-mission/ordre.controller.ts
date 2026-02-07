@@ -3,14 +3,17 @@ import {
     Get,
     Post,
     Put,
+    Patch,
     Delete,
     Body,
     Param,
     Query,
+    Request,
     HttpCode,
     HttpStatus,
     ParseIntPipe,
     ParseBoolPipe,
+    UseGuards,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -21,10 +24,12 @@ import {
     ApiBearerAuth,
     ApiBody,
 } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrdreMissionService } from './ordre.service';
 import {
     CreateOrdreMissionDto,
     UpdateOrdreMissionDto,
+    ChangeStatutOrdreMissionDto,
     OrdreMissionResponseDto,
     OrdreMissionWithRelationsDto,
 } from 'libs/dto/ordre-mission/mission.dto';
@@ -33,6 +38,7 @@ import { ErrorResponseDto } from 'libs/dto/global/response.dto';
 
 @ApiTags('Ordres de Mission')
 @ApiBearerAuth('JWT-auth')
+@UseGuards(JwtAuthGuard)
 @Controller('ordres-mission')
 export class OrdreMissionController {
     constructor(private readonly ordreMissionService: OrdreMissionService) { }
@@ -128,8 +134,11 @@ export class OrdreMissionController {
             },
         },
     })
-    async findAll(@Query() paginationQuery: OrdreMissionPaginationQueryDto) {
-        return this.ordreMissionService.findAll(paginationQuery);
+    async findAll(
+        @Query() paginationQuery: OrdreMissionPaginationQueryDto,
+        @Request() req,
+    ) {
+        return this.ordreMissionService.findAll(paginationQuery, req.user);
     }
 
     @Get('audit/non-apures')
@@ -181,8 +190,11 @@ export class OrdreMissionController {
             },
         },
     })
-    async findNonApuresForAudit(@Query() query: AuditNonApuresQueryDto) {
-        return this.ordreMissionService.findNonApuresForAudit(query);
+    async findNonApuresForAudit(
+        @Query() query: AuditNonApuresQueryDto,
+        @Request() req,
+    ) {
+        return this.ordreMissionService.findNonApuresForAudit(query, req.user);
     }
 
     @Get(':id')
@@ -295,6 +307,35 @@ export class OrdreMissionController {
         @Body() updateOrdreMissionDto: UpdateOrdreMissionDto,
     ): Promise<OrdreMissionResponseDto> {
         return this.ordreMissionService.update(id, updateOrdreMissionDto);
+    }
+
+    @Patch(':id/statut')
+    @ApiOperation({
+        summary: 'Modifier le statut d\'un ordre de mission',
+        description: 'Met à jour uniquement le statut d\'un ordre de mission',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'ID de l\'ordre de mission',
+        type: Number,
+        example: 1,
+    })
+    @ApiBody({ type: ChangeStatutOrdreMissionDto })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Statut mis à jour avec succès',
+        type: OrdreMissionResponseDto,
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        description: 'Ordre de mission non trouvé',
+        type: ErrorResponseDto,
+    })
+    async changeStatut(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() changeStatutDto: ChangeStatutOrdreMissionDto,
+    ): Promise<OrdreMissionResponseDto> {
+        return this.ordreMissionService.changeStatut(id, changeStatutDto);
     }
 
     @Delete(':id')

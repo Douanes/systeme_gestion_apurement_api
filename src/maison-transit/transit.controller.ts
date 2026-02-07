@@ -7,10 +7,12 @@ import {
     Body,
     Param,
     Query,
+    Request,
     HttpCode,
     HttpStatus,
     ParseIntPipe,
     ParseBoolPipe,
+    UseGuards,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -21,6 +23,7 @@ import {
     ApiBearerAuth,
     ApiBody,
 } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { MaisonTransitService } from './transit.service';
 import {
     CreateMaisonTransitDto,
@@ -37,6 +40,7 @@ import {
 
 @ApiTags('Maisons de Transit')
 @ApiBearerAuth('JWT-auth')
+@UseGuards(JwtAuthGuard)
 @Controller('maisons-transit')
 export class MaisonTransitController {
     constructor(private readonly maisonTransitService: MaisonTransitService) { }
@@ -93,8 +97,9 @@ export class MaisonTransitController {
     })
     async findAll(
         @Query() paginationQuery: MaisonTransitPaginationQueryDto,
+        @Request() req,
     ): Promise<PaginatedResponseDto<MaisonTransitResponseDto>> {
-        return this.maisonTransitService.findAll(paginationQuery);
+        return this.maisonTransitService.findAll(paginationQuery, req.user);
     }
 
     @Get(':id')

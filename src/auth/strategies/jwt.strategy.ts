@@ -49,6 +49,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
                 isActive: true,
                 emailVerified: true,
                 deletedAt: true,
+                maisonTransits: {
+                    where: { deletedAt: null },
+                    select: { maisonTransitId: true },
+                },
+                maisonTransitsOwned: {
+                    where: { deletedAt: null },
+                    select: { id: true },
+                },
             },
         });
 
@@ -64,6 +72,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
             throw new UnauthorizedException('Ce compte est désactivé');
         }
 
+        // Collecter les IDs des maisons de transit associées
+        const maisonTransitIds = [
+            ...new Set([
+                ...user.maisonTransits.map((mt) => mt.maisonTransitId),
+                ...user.maisonTransitsOwned.map((mt) => mt.id),
+            ]),
+        ];
+
         // Retourner l'utilisateur sans les champs sensibles
         return {
             id: user.id,
@@ -74,6 +90,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
             role: user.role,
             isActive: user.isActive,
             emailVerified: user.emailVerified,
+            maisonTransitIds,
         };
     }
 }

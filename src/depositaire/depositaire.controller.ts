@@ -7,6 +7,7 @@ import {
     Body,
     Param,
     Query,
+    Request,
     HttpCode,
     HttpStatus,
     ParseIntPipe,
@@ -103,8 +104,9 @@ export class DepositaireController {
     })
     async findAll(
         @Query() paginationQuery: DepositairePaginationQueryDto,
+        @Request() req,
     ): Promise<PaginatedResponseDto<DepositaireWithRelationsDto>> {
-        return this.depositaireService.findAll(paginationQuery);
+        return this.depositaireService.findAll(paginationQuery, req.user);
     }
 
     @Get(':id')

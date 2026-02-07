@@ -27,7 +27,7 @@ import {
     UpdateEscouadeDto,
     EscouadeResponseDto,
     EscouadeWithRelationsDto,
-    AddAgentToEscouadeDto,
+    AddAgentsToEscouadeDto,
     RemoveAgentFromEscouadeDto,
 } from 'libs/dto/escouade/escouade.dto';
 import { EscouadePaginationQueryDto } from 'libs/dto/escouade/pagination.dto';
@@ -207,8 +207,11 @@ export class EscouadeController {
 
     @Post(':id/agents')
     @ApiOperation({
-        summary: 'Ajouter un agent à l\'escouade',
-        description: 'Ajoute un agent comme membre de l\'escouade',
+        summary: 'Ajouter des agents à l\'escouade',
+        description:
+            'Ajoute un ou plusieurs agents comme membres de l\'escouade. ' +
+            'Un agent ne peut appartenir qu\'à une seule escouade. ' +
+            'La réponse indique les agents ajoutés et ceux non ajoutés avec la raison.',
     })
     @ApiParam({
         name: 'id',
@@ -216,31 +219,32 @@ export class EscouadeController {
         type: Number,
         example: 1,
     })
-    @ApiBody({ type: AddAgentToEscouadeDto })
+    @ApiBody({ type: AddAgentsToEscouadeDto })
     @ApiResponse({
         status: HttpStatus.OK,
-        description: 'Agent ajouté avec succès',
-        type: SuccessResponseDto,
+        description: 'Résultat de l\'ajout des agents',
+        schema: {
+            example: {
+                added: [
+                    { agentId: 1, firstname: 'Jean', lastname: 'Dupont' },
+                ],
+                notAdded: [
+                    { agentId: 2, reason: 'Agent non trouvé' },
+                    { agentId: 3, reason: 'Déjà membre de l\'escouade "Alpha"' },
+                ],
+            },
+        },
     })
     @ApiResponse({
         status: HttpStatus.NOT_FOUND,
-        description: 'Escouade ou agent non trouvé',
+        description: 'Escouade non trouvée',
         type: ErrorResponseDto,
     })
-    @ApiResponse({
-        status: HttpStatus.CONFLICT,
-        description: 'L\'agent est déjà membre de cette escouade',
-        type: ErrorResponseDto,
-    })
-    async addAgent(
+    async addAgents(
         @Param('id', ParseIntPipe) id: number,
-        @Body() addAgentDto: AddAgentToEscouadeDto,
-    ): Promise<SuccessResponseDto<null>> {
-        await this.escouadeService.addAgent(id, addAgentDto.agentId);
-        return {
-            success: true,
-            message: 'Agent ajouté à l\'escouade avec succès',
-        };
+        @Body() dto: AddAgentsToEscouadeDto,
+    ) {
+        return this.escouadeService.addAgents(id, dto.agentIds);
     }
 
     @Delete(':id/agents/:agentId')

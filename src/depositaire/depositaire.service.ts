@@ -90,6 +90,7 @@ export class DepositaireService {
      */
     async findAll(
         paginationQuery: DepositairePaginationQueryDto,
+        currentUser?: { role: string; maisonTransitIds: number[] },
     ): Promise<PaginatedResponseDto<DepositaireWithRelationsDto>> {
         const {
             page = 1,
@@ -108,6 +109,17 @@ export class DepositaireService {
             deletedAt: null,
         };
 
+        // Filtrage automatique par maison de transit pour TRANSITAIRE/DECLARANT
+        if (currentUser && !['ADMIN', 'AGENT', 'SUPERVISEUR'].includes(currentUser.role)) {
+            if (currentUser.maisonTransitIds.length > 0) {
+                where.maisonTransitId = { in: currentUser.maisonTransitIds };
+            } else {
+                where.maisonTransitId = -1;
+            }
+        } else if (maisonTransitId) {
+            where.maisonTransitId = maisonTransitId;
+        }
+
         // Recherche textuelle
         if (search) {
             where.OR = [
@@ -121,11 +133,6 @@ export class DepositaireService {
         // Filtrer par statut actif
         if (isActive !== undefined) {
             where.isActive = isActive;
-        }
-
-        // Filtrer par maison de transit
-        if (maisonTransitId) {
-            where.maisonTransitId = maisonTransitId;
         }
 
         // Récupération des données

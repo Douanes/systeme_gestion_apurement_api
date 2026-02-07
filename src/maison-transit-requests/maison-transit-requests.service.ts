@@ -366,9 +366,21 @@ export class MaisonTransitRequestsService {
             });
 
             // Créer la maison de transit
+            const mtCode = dto.code || `MT-${request.ninea?.substring(0, 8) || user.id}`;
+
+            // Vérifier l'unicité du code
+            const existingMt = await tx.maisonTransit.findUnique({
+                where: { code: mtCode },
+            });
+            if (existingMt) {
+                throw new ConflictException(
+                    `Le code "${mtCode}" est déjà utilisé par une autre maison de transit`,
+                );
+            }
+
             const maisonTransit = await tx.maisonTransit.create({
                 data: {
-                    code: `MT-${request.ninea?.substring(0, 8) || user.id}`,
+                    code: mtCode,
                     name: request.companyName,
                     address: request.address,
                     phone: request.phone,

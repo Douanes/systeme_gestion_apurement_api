@@ -15,13 +15,17 @@ import { Type } from 'class-transformer';
 // Enums matching Prisma schema
 export enum StatutOrdreMission {
     EN_COURS = 'EN_COURS',
-    TERMINE = 'TERMINE',
+    DEPOSE = 'DEPOSE',
+    TRAITE = 'TRAITE',
+    COTATION = 'COTATION',
+    REJETE = 'REJETE',
     ANNULE = 'ANNULE',
 }
 
 export enum StatutApurement {
-    NON_APURE = 'NON_APURE',
     APURE_SE = 'APURE_SE',
+    APURE = 'APURE',
+    NON_APURE = 'NON_APURE',
     REJET = 'REJET',
 }
 
@@ -481,6 +485,17 @@ export class CreateOrdreMissionDto {
 }
 
 export class UpdateOrdreMissionDto extends PartialType(CreateOrdreMissionDto) { }
+
+export class ChangeStatutOrdreMissionDto {
+    @ApiProperty({
+        description: 'Nouveau statut de l\'ordre de mission',
+        example: StatutOrdreMission.DEPOSE,
+        enum: StatutOrdreMission,
+    })
+    @IsEnum(StatutOrdreMission)
+    @IsNotEmpty()
+    statut: StatutOrdreMission;
+}
 
 export class OrdreMissionResponseDto {
     @ApiProperty({

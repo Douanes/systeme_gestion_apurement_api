@@ -86,7 +86,8 @@ export class AgentController {
     @ApiOperation({
         summary: 'Récupérer tous les agents',
         description:
-            'Récupère une liste paginée de tous les agents avec filtres optionnels',
+            'Récupère une liste paginée de tous les agents avec filtres optionnels. ' +
+            'Utilisez le paramètre "unassigned=true" pour filtrer les agents non assignés à une escouade.',
     })
     @ApiResponse({
         status: HttpStatus.OK,
