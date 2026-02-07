@@ -48,7 +48,7 @@ export class DepositaireController {
 
     @Post()
     @HttpCode(HttpStatus.CREATED)
-    @Roles(UserRole.ADMIN, UserRole.SUPERVISEUR)
+    @Roles(UserRole.ADMIN, UserRole.SUPERVISEUR, UserRole.TRANSITAIRE)
     @ApiOperation({
         summary: 'Créer un nouveau dépositaire',
         description: 'Crée un nouveau dépositaire dans le système',
