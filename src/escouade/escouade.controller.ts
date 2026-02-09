@@ -374,6 +374,80 @@ export class EscouadeController {
         };
     }
 
+    @Delete(':id/chef')
+    @ApiOperation({
+        summary: 'Retirer le chef de l\'escouade',
+        description: 'Retire le chef assigné à l\'escouade (met chefId à null)',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'ID de l\'escouade',
+        type: Number,
+        example: 1,
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Chef retiré avec succès',
+        type: SuccessResponseDto<EscouadeResponseDto>,
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        description: 'Escouade non trouvée',
+        type: ErrorResponseDto,
+    })
+    @ApiResponse({
+        status: HttpStatus.BAD_REQUEST,
+        description: 'Aucun chef assigné à cette escouade',
+        type: ErrorResponseDto,
+    })
+    async removeChef(
+        @Param('id', ParseIntPipe) id: number,
+    ): Promise<SuccessResponseDto<EscouadeResponseDto>> {
+        const escouade = await this.escouadeService.removeChef(id);
+        return {
+            success: true,
+            message: 'Chef retiré de l\'escouade avec succès',
+            data: escouade,
+        };
+    }
+
+    @Delete(':id/adjoint')
+    @ApiOperation({
+        summary: 'Retirer l\'adjoint de l\'escouade',
+        description: 'Retire l\'adjoint assigné à l\'escouade (met adjointId à null)',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'ID de l\'escouade',
+        type: Number,
+        example: 1,
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Adjoint retiré avec succès',
+        type: SuccessResponseDto<EscouadeResponseDto>,
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        description: 'Escouade non trouvée',
+        type: ErrorResponseDto,
+    })
+    @ApiResponse({
+        status: HttpStatus.BAD_REQUEST,
+        description: 'Aucun adjoint assigné à cette escouade',
+        type: ErrorResponseDto,
+    })
+    async removeAdjoint(
+        @Param('id', ParseIntPipe) id: number,
+    ): Promise<SuccessResponseDto<EscouadeResponseDto>> {
+        const escouade = await this.escouadeService.removeAdjoint(id);
+        return {
+            success: true,
+            message: 'Adjoint retiré de l\'escouade avec succès',
+            data: escouade,
+        };
+    }
+
     @Delete(':id')
     @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({
