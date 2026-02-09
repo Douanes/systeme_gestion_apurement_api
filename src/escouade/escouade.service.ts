@@ -469,4 +469,46 @@ export class EscouadeService {
 
         return this.toResponseDto(updatedEscouade);
     }
+
+    /**
+     * Retirer le chef de l'escouade
+     */
+    async removeChef(escouadeId: number): Promise<EscouadeResponseDto> {
+        const escouade = await this.findOne(escouadeId);
+
+        if (!escouade.chefId) {
+            throw new BadRequestException('Cette escouade n\'a pas de chef assigné');
+        }
+
+        const updatedEscouade = await this.prisma.escouade.update({
+            where: { id: escouadeId },
+            data: {
+                chefId: null,
+                updatedAt: new Date(),
+            },
+        });
+
+        return this.toResponseDto(updatedEscouade);
+    }
+
+    /**
+     * Retirer l'adjoint de l'escouade
+     */
+    async removeAdjoint(escouadeId: number): Promise<EscouadeResponseDto> {
+        const escouade = await this.findOne(escouadeId);
+
+        if (!escouade.adjointId) {
+            throw new BadRequestException('Cette escouade n\'a pas d\'adjoint assigné');
+        }
+
+        const updatedEscouade = await this.prisma.escouade.update({
+            where: { id: escouadeId },
+            data: {
+                adjointId: null,
+                updatedAt: new Date(),
+            },
+        });
+
+        return this.toResponseDto(updatedEscouade);
+    }
 }
