@@ -48,6 +48,25 @@ export class ProfileService {
                         deletedAt: null,
                     },
                 },
+                agent: {
+                    include: {
+                        escouadesAsChef: {
+                            where: { deletedAt: null },
+                            select: { id: true, name: true },
+                        },
+                        escouadesAsAdjoint: {
+                            where: { deletedAt: null },
+                            select: { id: true, name: true },
+                        },
+                        escouadeAgents: {
+                            include: {
+                                escouade: {
+                                    select: { id: true, name: true, deletedAt: true },
+                                },
+                            },
+                        },
+                    },
+                },
             },
         });
 
@@ -102,6 +121,38 @@ export class ProfileService {
                     isActive: mt.isActive,
                 };
             }
+        }
+
+        // Si l'utilisateur est un agent, inclure les informations de l'agent et son escouade
+        if (user.role === 'AGENT' && user.agent) {
+            const agent = user.agent;
+
+            let escouadeInfo: { id: number; name: string; role: 'CHEF' | 'ADJOINT' | 'MEMBRE' } | undefined;
+
+            if (agent.escouadesAsChef && agent.escouadesAsChef.length > 0) {
+                const escouade = agent.escouadesAsChef[0];
+                escouadeInfo = { id: escouade.id, name: escouade.name, role: 'CHEF' };
+            } else if (agent.escouadesAsAdjoint && agent.escouadesAsAdjoint.length > 0) {
+                const escouade = agent.escouadesAsAdjoint[0];
+                escouadeInfo = { id: escouade.id, name: escouade.name, role: 'ADJOINT' };
+            } else if (agent.escouadeAgents && agent.escouadeAgents.length > 0) {
+                const membership = agent.escouadeAgents.find((ea) => !ea.escouade.deletedAt);
+                if (membership) {
+                    escouadeInfo = { id: membership.escouade.id, name: membership.escouade.name, role: 'MEMBRE' };
+                }
+            }
+
+            profile.agent = {
+                id: agent.id,
+                matricule: agent.matricule || undefined,
+                grade: agent.grade || undefined,
+                firstname: agent.firstname,
+                lastname: agent.lastname,
+                phone: agent.phone || undefined,
+                email: agent.email || undefined,
+                isActive: agent.isActive,
+                escouade: escouadeInfo,
+            };
         }
 
         return profile;

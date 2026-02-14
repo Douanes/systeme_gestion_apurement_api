@@ -78,6 +78,45 @@ export class UserProfileDto {
 
     @ApiProperty({ type: MaisonTransitInfoDto, required: false, description: 'Informations de la maison de transit (uniquement pour les transitaires)' })
     maisonTransit?: MaisonTransitInfoDto;
+
+    @ApiProperty({ required: false, description: 'Informations de l\'agent (uniquement pour les agents)' })
+    agent?: AgentInfoDto;
+}
+
+export class AgentInfoDto {
+    @ApiProperty({ example: 1 })
+    id: number;
+
+    @ApiProperty({ example: 'AG-001', required: false })
+    matricule?: string;
+
+    @ApiProperty({ example: 'Capitaine', required: false })
+    grade?: string;
+
+    @ApiProperty({ example: 'Jean' })
+    firstname: string;
+
+    @ApiProperty({ example: 'Dupont' })
+    lastname: string;
+
+    @ApiProperty({ example: '+221771234567', required: false })
+    phone?: string;
+
+    @ApiProperty({ example: 'jean.dupont@douanes.sn', required: false })
+    email?: string;
+
+    @ApiProperty({ example: true })
+    isActive: boolean;
+
+    @ApiProperty({
+        required: false,
+        description: 'Escouade de l\'agent (chef, adjoint ou membre)',
+    })
+    escouade?: {
+        id: number;
+        name: string;
+        role: 'CHEF' | 'ADJOINT' | 'MEMBRE';
+    };
 }
 
 /**

@@ -486,6 +486,27 @@ export class CreateOrdreMissionDto {
 
 export class UpdateOrdreMissionDto extends PartialType(CreateOrdreMissionDto) { }
 
+export class AssignAgentEscorteurDto {
+    @ApiProperty({
+        description: 'ID de l\'agent escorteur à assigner',
+        example: 1,
+    })
+    @IsInt()
+    @IsNotEmpty()
+    agentId: number;
+}
+
+export class UpdateStatutApurementDto {
+    @ApiProperty({
+        description: 'Nouveau statut d\'apurement de l\'ordre de mission',
+        example: StatutApurement.APURE,
+        enum: StatutApurement,
+    })
+    @IsEnum(StatutApurement)
+    @IsNotEmpty()
+    statutApurement: StatutApurement;
+}
+
 export class ChangeStatutOrdreMissionDto {
     @ApiProperty({
         description: 'Nouveau statut de l\'ordre de mission',

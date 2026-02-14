@@ -30,6 +30,8 @@ import {
     CreateOrdreMissionDto,
     UpdateOrdreMissionDto,
     ChangeStatutOrdreMissionDto,
+    AssignAgentEscorteurDto,
+    UpdateStatutApurementDto,
     OrdreMissionResponseDto,
     OrdreMissionWithRelationsDto,
 } from 'libs/dto/ordre-mission/mission.dto';
@@ -336,6 +338,59 @@ export class OrdreMissionController {
         @Body() changeStatutDto: ChangeStatutOrdreMissionDto,
     ): Promise<OrdreMissionResponseDto> {
         return this.ordreMissionService.changeStatut(id, changeStatutDto);
+    }
+
+    @Put(':id/agent-escorteur')
+    @ApiOperation({
+        summary: 'Assigner un agent escorteur à un ordre de mission',
+        description:
+            'Assigne un agent escorteur. Uniquement possible si le statut est TRAITE. ' +
+            'Le statut passe automatiquement à COTATION après l\'assignation.',
+    })
+    @ApiParam({ name: 'id', description: 'ID de l\'ordre de mission', type: Number })
+    @ApiBody({ type: AssignAgentEscorteurDto })
+    @ApiResponse({ status: HttpStatus.OK, description: 'Agent escorteur assigné', type: OrdreMissionResponseDto })
+    @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Statut non valide pour l\'assignation', type: ErrorResponseDto })
+    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Ordre de mission ou agent non trouvé', type: ErrorResponseDto })
+    async assignAgentEscorteur(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() dto: AssignAgentEscorteurDto,
+    ): Promise<OrdreMissionResponseDto> {
+        return this.ordreMissionService.assignAgentEscorteur(id, dto.agentId);
+    }
+
+    @Delete(':id/agent-escorteur')
+    @ApiOperation({
+        summary: 'Retirer l\'agent escorteur d\'un ordre de mission',
+        description: 'Retire l\'agent escorteur assigné (met agentEscorteurId à null)',
+    })
+    @ApiParam({ name: 'id', description: 'ID de l\'ordre de mission', type: Number })
+    @ApiResponse({ status: HttpStatus.OK, description: 'Agent escorteur retiré', type: OrdreMissionResponseDto })
+    @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Aucun agent escorteur assigné', type: ErrorResponseDto })
+    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Ordre de mission non trouvé', type: ErrorResponseDto })
+    async removeAgentEscorteur(
+        @Param('id', ParseIntPipe) id: number,
+    ): Promise<OrdreMissionResponseDto> {
+        return this.ordreMissionService.removeAgentEscorteur(id);
+    }
+
+    @Patch(':id/statut-apurement')
+    @ApiOperation({
+        summary: 'Mettre à jour le statut d\'apurement d\'un ordre de mission',
+        description:
+            'Met à jour le statut d\'apurement. Si le statut est APURE, vérifie que toutes les déclarations ' +
+            'sont totalement livrées (nbreColisRestant = 0). Les déclarations livrées sont automatiquement marquées comme apurées.',
+    })
+    @ApiParam({ name: 'id', description: 'ID de l\'ordre de mission', type: Number })
+    @ApiBody({ type: UpdateStatutApurementDto })
+    @ApiResponse({ status: HttpStatus.OK, description: 'Statut d\'apurement mis à jour', type: OrdreMissionResponseDto })
+    @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Déclarations non totalement livrées', type: ErrorResponseDto })
+    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Ordre de mission non trouvé', type: ErrorResponseDto })
+    async updateStatutApurement(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() dto: UpdateStatutApurementDto,
+    ): Promise<OrdreMissionResponseDto> {
+        return this.ordreMissionService.updateStatutApurement(id, dto.statutApurement);
     }
 
     @Delete(':id')
