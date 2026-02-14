@@ -19,6 +19,7 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { MaisonTransitRequestsModule } from './maison-transit-requests/maison-transit-requests.module';
 import { DepositaireModule } from './depositaire/depositaire.module';
 import { DeclarationModule } from './declaration/declaration.module';
+import { SystemParameterModule } from './system-parameter/system-parameter.module';
 
 @Module({
   imports: [
@@ -42,7 +43,8 @@ import { DeclarationModule } from './declaration/declaration.module';
     DepositaireModule,
     DeclarationModule,
     OrdreMissionModule,
-    StatisticsModule
+    StatisticsModule,
+    SystemParameterModule,
   ],
   providers: [ProfileService],
   controllers: [ProfileController],

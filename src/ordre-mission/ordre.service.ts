@@ -3,8 +3,10 @@ import {
     NotFoundException,
     ConflictException,
     BadRequestException,
+    ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { OrdreMission, StatutOrdreMission as PrismaStatutOrdreMission, StatutApurement as PrismaStatutApurement } from '@prisma/client';
 import {
     CreateOrdreMissionDto,
@@ -15,13 +17,19 @@ import {
     StatutOrdreMission,
     StatutApurement,
     StatutLivraisonParcelle,
+    CreateOrdreMissionDocumentDto,
+    OrdreMissionDocumentResponseDto,
+    OrdreMissionUploadSignatureResponseDto,
 } from 'libs/dto/ordre-mission/mission.dto';
 import { OrdreMissionPaginationQueryDto, AuditNonApuresQueryDto } from 'libs/dto/ordre-mission/pagination.dto';
 import { PaginatedResponseDto } from 'libs/dto/global/response.dto';
 
 @Injectable()
 export class OrdreMissionService {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly cloudinaryService: CloudinaryService,
+    ) { }
 
     /**
      * Générer un numéro d'ordre de mission unique
@@ -92,6 +100,8 @@ export class OrdreMissionService {
             agentEscorteurId: ordreMission.agentEscorteurId,
             bureauSortieId: ordreMission.bureauSortieId,
             observations: ordreMission.observations,
+            chefBureauId: ordreMission.chefBureauId,
+            chefSectionId: ordreMission.chefSectionId,
             createdAt: ordreMission.createdAt,
             updatedAt: ordreMission.updatedAt,
         };
@@ -124,6 +134,9 @@ export class OrdreMissionService {
             }
         }
 
+        // Récupérer les paramètres système pour le snapshot chef bureau/section
+        const systemParam = await this.prisma.systemParameter.findFirst();
+
         // Utiliser une transaction pour créer tout atomiquement
         const ordreMission = await this.prisma.$transaction(async (tx) => {
             // 1. Créer l'ordre de mission
@@ -141,6 +154,8 @@ export class OrdreMissionService {
                     statutApurement: createOrdreMissionDto.statutApurement as any as PrismaStatutApurement,
                     ecouadeId: createOrdreMissionDto.escouadeId,
                     agentEscorteurId: createOrdreMissionDto.agentEscorteurId,
+                    chefBureauId: systemParam?.chefBureauId ?? null,
+                    chefSectionId: systemParam?.chefSectionId ?? null,
                     bureauSortieId: createOrdreMissionDto.bureauSortieId,
                     observations: createOrdreMissionDto.observations,
                 },
@@ -506,6 +521,8 @@ export class OrdreMissionService {
                 ecouade: true,
                 agentEscorteur: true,
                 bureauSortie: true,
+                chefBureau: true,
+                chefSection: true,
                 declarations: {
                     where: { deletedAt: null },
                     include: {
@@ -554,6 +571,8 @@ export class OrdreMissionService {
                 : null,
             agentEscorteur: ordreMission.agentEscorteur,
             bureauSortie: ordreMission.bureauSortie,
+            chefBureau: (ordreMission as any).chefBureau || null,
+            chefSection: (ordreMission as any).chefSection || null,
             declarations: ordreMission.declarations.map((omd) => ({
                 id: omd.declaration.id,
                 numeroDeclaration: omd.declaration.numeroDeclaration,
@@ -1302,5 +1321,312 @@ export class OrdreMissionService {
                 hasPrevious: page > 1,
             },
         };
+    }
+
+    // ===== Agent escorteur =====
+
+    /**
+     * Assigner un agent escorteur à un ordre de mission
+     * Uniquement si le statut est TRAITE, passe le statut à COTATION
+     */
+    async assignAgentEscorteur(
+        id: number,
+        agentId: number,
+    ): Promise<OrdreMissionResponseDto> {
+        const ordre = await this.prisma.ordreMission.findFirst({
+            where: { id, deletedAt: null },
+        });
+
+        if (!ordre) {
+            throw new NotFoundException(`Ordre de mission avec l'ID ${id} non trouvé`);
+        }
+
+        if (ordre.statut !== PrismaStatutOrdreMission.TRAITE) {
+            throw new BadRequestException(
+                'L\'agent escorteur ne peut être assigné que lorsque le statut est TRAITE',
+            );
+        }
+
+        // Vérifier que l'agent existe
+        const agent = await this.prisma.agent.findUnique({
+            where: { id: agentId },
+        });
+
+        if (!agent) {
+            throw new NotFoundException(`Agent avec l'ID ${agentId} non trouvé`);
+        }
+
+        const updated = await this.prisma.ordreMission.update({
+            where: { id },
+            data: {
+                agentEscorteurId: agentId,
+                statut: PrismaStatutOrdreMission.COTATION,
+                updatedAt: new Date(),
+            },
+        });
+
+        return this.toResponseDto(updated);
+    }
+
+    /**
+     * Retirer l'agent escorteur d'un ordre de mission
+     */
+    async removeAgentEscorteur(id: number): Promise<OrdreMissionResponseDto> {
+        const ordre = await this.prisma.ordreMission.findFirst({
+            where: { id, deletedAt: null },
+        });
+
+        if (!ordre) {
+            throw new NotFoundException(`Ordre de mission avec l'ID ${id} non trouvé`);
+        }
+
+        if (!ordre.agentEscorteurId) {
+            throw new BadRequestException('Aucun agent escorteur n\'est assigné à cet ordre');
+        }
+
+        const updated = await this.prisma.ordreMission.update({
+            where: { id },
+            data: {
+                agentEscorteurId: null,
+                updatedAt: new Date(),
+            },
+        });
+
+        return this.toResponseDto(updated);
+    }
+
+    // ===== Statut apurement =====
+
+    /**
+     * Mettre à jour le statut d'apurement d'un ordre de mission
+     * Si APURE: toutes les déclarations doivent avoir nbreColisRestant === 0
+     */
+    async updateStatutApurement(
+        id: number,
+        statutApurement: StatutApurement,
+    ): Promise<OrdreMissionResponseDto> {
+        const ordre = await this.prisma.ordreMission.findFirst({
+            where: { id, deletedAt: null },
+            include: {
+                declarations: {
+                    where: { deletedAt: null },
+                    include: { declaration: true },
+                },
+            },
+        });
+
+        if (!ordre) {
+            throw new NotFoundException(`Ordre de mission avec l'ID ${id} non trouvé`);
+        }
+
+        // Si on veut apurer, vérifier que toutes les déclarations sont livrées
+        if (statutApurement === StatutApurement.APURE) {
+            const declarationsNonApurees = ordre.declarations.filter(
+                (d) => d.declaration.nbreColisRestant > 0,
+            );
+
+            if (declarationsNonApurees.length > 0) {
+                const numeros = declarationsNonApurees
+                    .map((d) => d.declaration.numeroDeclaration)
+                    .join(', ');
+                throw new BadRequestException(
+                    `Impossible d'apurer l'ordre de mission. Les déclarations suivantes ont encore des colis restants: ${numeros}`,
+                );
+            }
+        }
+
+        // Mettre à jour dans une transaction
+        const updated = await this.prisma.$transaction(async (tx) => {
+            // Mettre à jour le statut d'apurement de l'ordre
+            const updatedOrdre = await tx.ordreMission.update({
+                where: { id },
+                data: {
+                    statutApurement: statutApurement as any as PrismaStatutApurement,
+                    updatedAt: new Date(),
+                },
+            });
+
+            // Si APURE, mettre à jour aussi le statut des déclarations
+            if (statutApurement === StatutApurement.APURE) {
+                const declarationIds = ordre.declarations.map((d) => d.declarationId);
+                if (declarationIds.length > 0) {
+                    await tx.declaration.updateMany({
+                        where: { id: { in: declarationIds } },
+                        data: {
+                            statutApurement: PrismaStatutApurement.APURE,
+                            updatedAt: new Date(),
+                        },
+                    });
+                }
+            }
+
+            return updatedOrdre;
+        });
+
+        return this.toResponseDto(updated);
+    }
+
+    // ===== Documents ordre de mission =====
+
+    /**
+     * Générer une signature Cloudinary pour upload de document
+     */
+    generateUploadSignature(fileName: string): OrdreMissionUploadSignatureResponseDto {
+        const folder = 'ordre-mission-documents';
+        const timestamp = Date.now();
+        const sanitizedFileName = fileName
+            .replace(/\.[^/.]+$/, '')
+            .replace(/[^a-zA-Z0-9-_]/g, '_')
+            .substring(0, 50);
+
+        const publicId = `${folder}/document_${sanitizedFileName}_${timestamp}`;
+
+        const signatureData = this.cloudinaryService.generateSignature({
+            public_id: publicId,
+            type: 'authenticated',
+        });
+
+        const uploadUrl = `https://api.cloudinary.com/v1_1/${signatureData.cloud_name}/raw/upload`;
+
+        return {
+            upload_url: uploadUrl,
+            ...signatureData,
+            public_id: publicId,
+            resource_type: 'raw',
+            type: 'authenticated',
+        };
+    }
+
+    /**
+     * Enregistrer un document uploadé pour un ordre de mission
+     */
+    async createDocument(
+        ordreMissionId: number,
+        dto: CreateOrdreMissionDocumentDto,
+        currentUser: { id: number; role: string; maisonTransitIds?: number[] },
+    ): Promise<OrdreMissionDocumentResponseDto> {
+        // Vérifier que l'ordre existe
+        const ordre = await this.prisma.ordreMission.findFirst({
+            where: { id: ordreMissionId, deletedAt: null },
+        });
+
+        if (!ordre) {
+            throw new NotFoundException(`Ordre de mission avec l'ID ${ordreMissionId} non trouvé`);
+        }
+
+        // Déterminer la maisonTransitId du user connecté
+        let maisonTransitId: number | null = null;
+        if (currentUser.maisonTransitIds && currentUser.maisonTransitIds.length > 0) {
+            maisonTransitId = currentUser.maisonTransitIds[0];
+        }
+
+        const document = await this.prisma.ordreMissionDocument.create({
+            data: {
+                ordreMissionId,
+                maisonTransitId,
+                fileName: dto.fileName,
+                fileUrl: dto.fileUrl,
+                fileSize: dto.fileSize,
+                mimeType: dto.mimeType,
+                cloudinaryId: dto.cloudinaryId,
+                uploadedById: currentUser.id,
+            },
+            include: {
+                maisonTransit: { select: { id: true, name: true, code: true } },
+                uploadedBy: { select: { id: true, firstname: true, lastname: true } },
+            },
+        });
+
+        return document as OrdreMissionDocumentResponseDto;
+    }
+
+    /**
+     * Lister les documents d'un ordre de mission
+     * TRANSITAIRE/DECLARANT voient uniquement ceux de leur maison de transit
+     */
+    async findDocuments(
+        ordreMissionId: number,
+        currentUser: { role: string; maisonTransitIds?: number[] },
+    ): Promise<OrdreMissionDocumentResponseDto[]> {
+        // Vérifier que l'ordre existe
+        const ordre = await this.prisma.ordreMission.findFirst({
+            where: { id: ordreMissionId, deletedAt: null },
+        });
+
+        if (!ordre) {
+            throw new NotFoundException(`Ordre de mission avec l'ID ${ordreMissionId} non trouvé`);
+        }
+
+        const where: any = {
+            ordreMissionId,
+            deletedAt: null,
+        };
+
+        // Filtrer par maison de transit pour TRANSITAIRE/DECLARANT
+        if (!['ADMIN', 'AGENT', 'SUPERVISEUR'].includes(currentUser.role)) {
+            if (currentUser.maisonTransitIds && currentUser.maisonTransitIds.length > 0) {
+                where.maisonTransitId = { in: currentUser.maisonTransitIds };
+            } else {
+                where.maisonTransitId = -1;
+            }
+        }
+
+        const documents = await this.prisma.ordreMissionDocument.findMany({
+            where,
+            orderBy: { uploadedAt: 'desc' },
+            include: {
+                maisonTransit: { select: { id: true, name: true, code: true } },
+                uploadedBy: { select: { id: true, firstname: true, lastname: true } },
+            },
+        });
+
+        return documents as OrdreMissionDocumentResponseDto[];
+    }
+
+    /**
+     * Supprimer un document (soft delete + cleanup Cloudinary)
+     */
+    async removeDocument(
+        ordreMissionId: number,
+        documentId: number,
+        currentUser: { role: string; maisonTransitIds?: number[] },
+    ): Promise<void> {
+        const document = await this.prisma.ordreMissionDocument.findFirst({
+            where: {
+                id: documentId,
+                ordreMissionId,
+                deletedAt: null,
+            },
+        });
+
+        if (!document) {
+            throw new NotFoundException('Document non trouvé');
+        }
+
+        // Vérifier que le user a le droit de supprimer (même MT ou ADMIN/AGENT/SUPERVISEUR)
+        if (!['ADMIN', 'AGENT', 'SUPERVISEUR'].includes(currentUser.role)) {
+            if (
+                !currentUser.maisonTransitIds ||
+                !document.maisonTransitId ||
+                !currentUser.maisonTransitIds.includes(document.maisonTransitId)
+            ) {
+                throw new ForbiddenException('Vous ne pouvez supprimer que les documents de votre maison de transit');
+            }
+        }
+
+        // Soft delete
+        await this.prisma.ordreMissionDocument.update({
+            where: { id: documentId },
+            data: { deletedAt: new Date() },
+        });
+
+        // Supprimer de Cloudinary si un cloudinaryId existe
+        if (document.cloudinaryId) {
+            try {
+                await this.cloudinaryService.deleteFile(document.cloudinaryId);
+            } catch {
+                // Log silently - file may already be deleted
+            }
+        }
     }
 }

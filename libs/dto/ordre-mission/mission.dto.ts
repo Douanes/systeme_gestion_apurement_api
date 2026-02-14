@@ -615,6 +615,20 @@ export class OrdreMissionResponseDto {
     })
     observations?: string | null;
 
+    @ApiPropertyOptional({
+        description: 'ID du chef de bureau (snapshot au moment de la création)',
+        example: 3,
+        nullable: true,
+    })
+    chefBureauId?: number | null;
+
+    @ApiPropertyOptional({
+        description: 'ID du chef de section (snapshot au moment de la création)',
+        example: 5,
+        nullable: true,
+    })
+    chefSectionId?: number | null;
+
     @ApiProperty({
         description: 'Date de création',
         example: '2024-01-15T10:30:00.000Z',
@@ -732,6 +746,18 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
         name: string;
         code: string;
     } | null;
+
+    @ApiPropertyOptional({
+        description: 'Chef de bureau (snapshot au moment de la création)',
+        nullable: true,
+    })
+    chefBureau?: any;
+
+    @ApiPropertyOptional({
+        description: 'Chef de section (snapshot au moment de la création)',
+        nullable: true,
+    })
+    chefSection?: any;
 
     @ApiPropertyOptional({
         description: 'Escouade',
@@ -886,4 +912,127 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
         driverNationality?: string | null;
         phone?: string | null;
     }>;
+}
+
+// ===== DTOs pour les documents d'ordre de mission =====
+
+export class GenerateOrdreMissionUploadSignatureDto {
+    @ApiProperty({
+        description: 'Nom du fichier à uploader',
+        example: 'bon_de_livraison.pdf',
+    })
+    @IsString({ message: 'Le nom du fichier doit être une chaîne de caractères' })
+    @IsNotEmpty({ message: 'Le nom du fichier est requis' })
+    fileName: string;
+}
+
+export class OrdreMissionUploadSignatureResponseDto {
+    @ApiProperty({ example: 'https://api.cloudinary.com/v1_1/your-cloud/raw/upload' })
+    upload_url: string;
+
+    @ApiProperty({ example: 'a1b2c3d4e5f6...' })
+    signature: string;
+
+    @ApiProperty({ example: 1703001234567 })
+    timestamp: number;
+
+    @ApiProperty({ example: '123456789012345' })
+    api_key: string;
+
+    @ApiProperty({ example: 'your-cloud-name' })
+    cloud_name: string;
+
+    @ApiProperty({ example: 'ordre-mission-documents/document_1703001234567' })
+    public_id: string;
+
+    @ApiProperty({ example: 'raw' })
+    resource_type: string;
+
+    @ApiProperty({ example: 'authenticated' })
+    type: string;
+}
+
+export class CreateOrdreMissionDocumentDto {
+    @ApiProperty({ description: 'Nom du fichier', example: 'bon_de_livraison.pdf' })
+    @IsString()
+    @IsNotEmpty()
+    fileName: string;
+
+    @ApiProperty({ description: 'URL du fichier sur Cloudinary', example: 'https://res.cloudinary.com/...' })
+    @IsString()
+    @IsNotEmpty()
+    fileUrl: string;
+
+    @ApiPropertyOptional({ description: 'Taille du fichier en octets', example: 1024000 })
+    @IsOptional()
+    @IsInt()
+    fileSize?: number;
+
+    @ApiPropertyOptional({ description: 'Type MIME du fichier', example: 'application/pdf' })
+    @IsOptional()
+    @IsString()
+    mimeType?: string;
+
+    @ApiPropertyOptional({ description: 'Public ID Cloudinary', example: 'ordre-mission-documents/document_123' })
+    @IsOptional()
+    @IsString()
+    cloudinaryId?: string;
+}
+
+export class OrdreMissionDocumentResponseDto {
+    @ApiProperty({ example: 1 })
+    id: number;
+
+    @ApiProperty({ example: 1 })
+    ordreMissionId: number;
+
+    @ApiProperty({ example: 1, required: false })
+    maisonTransitId: number | null;
+
+    @ApiProperty({ example: 'bon_de_livraison.pdf' })
+    fileName: string;
+
+    @ApiProperty({ example: 'https://res.cloudinary.com/...' })
+    fileUrl: string;
+
+    @ApiPropertyOptional({ example: 1024000 })
+    fileSize?: number | null;
+
+    @ApiPropertyOptional({ example: 'application/pdf' })
+    mimeType?: string | null;
+
+    @ApiPropertyOptional({ example: 'ordre-mission-documents/document_123' })
+    cloudinaryId?: string | null;
+
+    @ApiProperty({ example: 1, required: false })
+    uploadedById: number | null;
+
+    @ApiProperty({ example: '2024-12-22T10:30:00.000Z' })
+    uploadedAt: Date;
+
+    @ApiPropertyOptional({ description: 'Maison de transit' })
+    maisonTransit?: any;
+
+    @ApiPropertyOptional({ description: 'Utilisateur ayant uploadé' })
+    uploadedBy?: any;
+}
+
+// ===== DTOs pour agent escorteur et statut apurement =====
+
+export class AssignAgentEscorteurDto {
+    @ApiProperty({ description: 'ID de l\'agent escorteur', example: 5 })
+    @IsInt()
+    @IsNotEmpty()
+    agentId: number;
+}
+
+export class UpdateStatutApurementDto {
+    @ApiProperty({
+        description: 'Nouveau statut d\'apurement',
+        enum: StatutApurement,
+        example: StatutApurement.APURE,
+    })
+    @IsEnum(StatutApurement)
+    @IsNotEmpty()
+    statutApurement: StatutApurement;
 }

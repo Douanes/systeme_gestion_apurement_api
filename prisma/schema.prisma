@@ -89,8 +89,9 @@ model User {
   passwordResetTokens   PasswordResetToken[] // Tokens de réinitialisation de mot de passe
   agent                 Agent?
   userPermissions       UserPermission[] // Permissions personnalisées
-  maisonTransitRequests MaisonTransitRequest[]   @relation("RequestCreator")
-  reviewedRequests      MaisonTransitRequest[]   @relation("RequestReviewer")
+  maisonTransitRequests  MaisonTransitRequest[]   @relation("RequestCreator")
+  reviewedRequests       MaisonTransitRequest[]   @relation("RequestReviewer")
+  ordreMissionDocuments  OrdreMissionDocument[]
 
   @@map("users")
 }
@@ -155,6 +156,14 @@ model Agent {
   ordreMissions      OrdreMission[]
   escouades          Escouade[]
 
+  // Relations paramètres système
+  systemParametersAsChefBureau  SystemParameter[] @relation("ChefBureau")
+  systemParametersAsChefSection SystemParameter[] @relation("ChefSection")
+
+  // Relations ordres de mission en tant que chef bureau/section
+  ordreMissionsAsChefBureau  OrdreMission[] @relation("OrdreMissionChefBureau")
+  ordreMissionsAsChefSection OrdreMission[] @relation("OrdreMissionChefSection")
+
   @@map("agents")
 }
 
@@ -206,7 +215,8 @@ model MaisonTransit {
   invitations   AccountActivationToken[] // Invitations pour staff
   depositaires  Depositaire[]
   declarations  Declaration[]
-  ordreMissions OrdreMission[]
+  ordreMissions          OrdreMission[]
+  ordreMissionDocuments  OrdreMissionDocument[]
 
   @@map("maisons_transits")
 }
@@ -225,6 +235,8 @@ model OrdreMission {
   ecouadeId        Int?               @map("escouade_id")
   agentEscorteurId Int?               @map("agent_escorteur_id")
   bureauSortieId   Int?               @map("bureau_sortie_id")
+  chefBureauId     Int?               @map("chef_bureau_id")
+  chefSectionId    Int?               @map("chef_section_id")
   observations     String?            @db.Text
   createdAt        DateTime           @default(now()) @map("created_at")
   updatedAt        DateTime           @updatedAt @map("updated_at")
@@ -236,10 +248,13 @@ model OrdreMission {
   bureauSortie   BureauSortie?             @relation(fields: [bureauSortieId], references: [id], onDelete: SetNull)
   maisonTransit  MaisonTransit?            @relation(fields: [maisonTransitId], references: [id], onDelete: SetNull)
   ecouade        Escouade?                 @relation(fields: [ecouadeId], references: [id], onDelete: SetNull)
+  chefBureau     Agent?                    @relation("OrdreMissionChefBureau", fields: [chefBureauId], references: [id], onDelete: SetNull)
+  chefSection    Agent?                    @relation("OrdreMissionChefSection", fields: [chefSectionId], references: [id], onDelete: SetNull)
   declarations   OrdreMissionDeclaration[]
   conteneurs     OrdreMissionConteneur[]
   camions        OrdreMissionCamion[]
   voitures       OrdreMissionVoiture[]
+  documents      OrdreMissionDocument[]
 
   @@map("ordres_missions")
 }
@@ -631,4 +646,43 @@ model RequestDocument {
   @@index([requestId])
   @@index([type])
   @@map("request_documents")
+}
+
+model SystemParameter {
+  id            Int      @id @default(autoincrement())
+  chefBureauId  Int?     @map("chef_bureau_id")
+  chefSectionId Int?     @map("chef_section_id")
+  phone         String?  @db.VarChar(20)
+  email         String?  @db.VarChar(255)
+  address       String?  @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  chefBureau  Agent? @relation("ChefBureau", fields: [chefBureauId], references: [id], onDelete: SetNull)
+  chefSection Agent? @relation("ChefSection", fields: [chefSectionId], references: [id], onDelete: SetNull)
+
+  @@map("system_parameters")
+}
+
+model OrdreMissionDocument {
+  id              Int       @id @default(autoincrement())
+  ordreMissionId  Int       @map("ordre_mission_id")
+  maisonTransitId Int?      @map("maison_transit_id")
+  fileName        String    @map("file_name") @db.VarChar(255)
+  fileUrl         String    @map("file_url") @db.Text
+  fileSize        Int?      @map("file_size")
+  mimeType        String?   @map("mime_type") @db.VarChar(100)
+  cloudinaryId    String?   @map("cloudinary_id") @db.VarChar(255)
+  uploadedById    Int?      @map("uploaded_by")
+  uploadedAt      DateTime  @default(now()) @map("uploaded_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  ordreMission  OrdreMission   @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
+  maisonTransit MaisonTransit? @relation(fields: [maisonTransitId], references: [id], onDelete: SetNull)
+  uploadedBy    User?          @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([ordreMissionId])
+  @@index([maisonTransitId])
+  @@map("ordre_mission_documents")
 }

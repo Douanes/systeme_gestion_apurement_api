@@ -34,9 +34,15 @@ import {
     UpdateStatutApurementDto,
     OrdreMissionResponseDto,
     OrdreMissionWithRelationsDto,
+    AssignAgentEscorteurDto,
+    UpdateStatutApurementDto,
+    GenerateOrdreMissionUploadSignatureDto,
+    OrdreMissionUploadSignatureResponseDto,
+    CreateOrdreMissionDocumentDto,
+    OrdreMissionDocumentResponseDto,
 } from 'libs/dto/ordre-mission/mission.dto';
 import { OrdreMissionPaginationQueryDto, AuditNonApuresQueryDto } from 'libs/dto/ordre-mission/pagination.dto';
-import { ErrorResponseDto } from 'libs/dto/global/response.dto';
+import { ErrorResponseDto, SuccessResponseDto } from 'libs/dto/global/response.dto';
 
 @ApiTags('Ordres de Mission')
 @ApiBearerAuth('JWT-auth')
@@ -416,5 +422,247 @@ export class OrdreMissionController {
     })
     async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
         return this.ordreMissionService.remove(id);
+    }
+
+    // ===== Agent escorteur =====
+
+    @Put(':id/agent-escorteur')
+    @ApiOperation({
+        summary: 'Assigner un agent escorteur',
+        description: 'Assigne un agent escorteur à l\'ordre de mission. Le statut doit être TRAITE, il passera à COTATION',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'ID de l\'ordre de mission',
+        type: Number,
+        example: 1,
+    })
+    @ApiBody({ type: AssignAgentEscorteurDto })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Agent escorteur assigné avec succès',
+        type: SuccessResponseDto<OrdreMissionResponseDto>,
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        description: 'Ordre de mission ou agent non trouvé',
+        type: ErrorResponseDto,
+    })
+    @ApiResponse({
+        status: HttpStatus.BAD_REQUEST,
+        description: 'Le statut doit être TRAITE',
+        type: ErrorResponseDto,
+    })
+    async assignAgentEscorteur(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() dto: AssignAgentEscorteurDto,
+    ): Promise<SuccessResponseDto<OrdreMissionResponseDto>> {
+        const ordre = await this.ordreMissionService.assignAgentEscorteur(id, dto.agentId);
+        return {
+            success: true,
+            message: 'Agent escorteur assigné avec succès',
+            data: ordre,
+        };
+    }
+
+    @Delete(':id/agent-escorteur')
+    @ApiOperation({
+        summary: 'Retirer l\'agent escorteur',
+        description: 'Retire l\'agent escorteur de l\'ordre de mission',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'ID de l\'ordre de mission',
+        type: Number,
+        example: 1,
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Agent escorteur retiré avec succès',
+        type: SuccessResponseDto<OrdreMissionResponseDto>,
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        description: 'Ordre de mission non trouvé',
+        type: ErrorResponseDto,
+    })
+    @ApiResponse({
+        status: HttpStatus.BAD_REQUEST,
+        description: 'Aucun agent escorteur assigné',
+        type: ErrorResponseDto,
+    })
+    async removeAgentEscorteur(
+        @Param('id', ParseIntPipe) id: number,
+    ): Promise<SuccessResponseDto<OrdreMissionResponseDto>> {
+        const ordre = await this.ordreMissionService.removeAgentEscorteur(id);
+        return {
+            success: true,
+            message: 'Agent escorteur retiré avec succès',
+            data: ordre,
+        };
+    }
+
+    // ===== Statut apurement =====
+
+    @Patch(':id/statut-apurement')
+    @ApiOperation({
+        summary: 'Modifier le statut d\'apurement',
+        description: 'Met à jour le statut d\'apurement de l\'ordre. Pour APURE, toutes les déclarations doivent avoir nbreColisRestant = 0',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'ID de l\'ordre de mission',
+        type: Number,
+        example: 1,
+    })
+    @ApiBody({ type: UpdateStatutApurementDto })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Statut d\'apurement mis à jour avec succès',
+        type: SuccessResponseDto<OrdreMissionResponseDto>,
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        description: 'Ordre de mission non trouvé',
+        type: ErrorResponseDto,
+    })
+    @ApiResponse({
+        status: HttpStatus.BAD_REQUEST,
+        description: 'Impossible d\'apurer - déclarations avec colis restants',
+        type: ErrorResponseDto,
+    })
+    async updateStatutApurement(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() dto: UpdateStatutApurementDto,
+    ): Promise<SuccessResponseDto<OrdreMissionResponseDto>> {
+        const ordre = await this.ordreMissionService.updateStatutApurement(id, dto.statutApurement);
+        return {
+            success: true,
+            message: 'Statut d\'apurement mis à jour avec succès',
+            data: ordre,
+        };
+    }
+
+    // ===== Documents =====
+
+    @Post('upload-signature')
+    @ApiOperation({
+        summary: 'Générer une signature pour upload de document',
+        description: 'Génère une signature Cloudinary pour uploader un document directement depuis le client',
+    })
+    @ApiBody({ type: GenerateOrdreMissionUploadSignatureDto })
+    @ApiResponse({
+        status: HttpStatus.CREATED,
+        description: 'Signature générée avec succès',
+        type: OrdreMissionUploadSignatureResponseDto,
+    })
+    async generateUploadSignature(
+        @Body() dto: GenerateOrdreMissionUploadSignatureDto,
+    ): Promise<OrdreMissionUploadSignatureResponseDto> {
+        return this.ordreMissionService.generateUploadSignature(dto.fileName);
+    }
+
+    @Post(':id/documents')
+    @ApiOperation({
+        summary: 'Enregistrer un document uploadé',
+        description: 'Enregistre les métadonnées d\'un document uploadé sur Cloudinary pour un ordre de mission',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'ID de l\'ordre de mission',
+        type: Number,
+        example: 1,
+    })
+    @ApiBody({ type: CreateOrdreMissionDocumentDto })
+    @ApiResponse({
+        status: HttpStatus.CREATED,
+        description: 'Document enregistré avec succès',
+        type: OrdreMissionDocumentResponseDto,
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        description: 'Ordre de mission non trouvé',
+        type: ErrorResponseDto,
+    })
+    @HttpCode(HttpStatus.CREATED)
+    async createDocument(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() dto: CreateOrdreMissionDocumentDto,
+        @Request() req,
+    ): Promise<OrdreMissionDocumentResponseDto> {
+        return this.ordreMissionService.createDocument(id, dto, req.user);
+    }
+
+    @Get(':id/documents')
+    @ApiOperation({
+        summary: 'Lister les documents d\'un ordre de mission',
+        description: 'Récupère tous les documents d\'un ordre. Les TRANSITAIRE/DECLARANT ne voient que ceux de leur maison de transit',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'ID de l\'ordre de mission',
+        type: Number,
+        example: 1,
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Documents récupérés avec succès',
+        type: [OrdreMissionDocumentResponseDto],
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        description: 'Ordre de mission non trouvé',
+        type: ErrorResponseDto,
+    })
+    async findDocuments(
+        @Param('id', ParseIntPipe) id: number,
+        @Request() req,
+    ): Promise<OrdreMissionDocumentResponseDto[]> {
+        return this.ordreMissionService.findDocuments(id, req.user);
+    }
+
+    @Delete(':id/documents/:documentId')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Supprimer un document',
+        description: 'Supprime un document d\'un ordre de mission (soft delete + cleanup Cloudinary)',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'ID de l\'ordre de mission',
+        type: Number,
+        example: 1,
+    })
+    @ApiParam({
+        name: 'documentId',
+        description: 'ID du document à supprimer',
+        type: Number,
+        example: 5,
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Document supprimé avec succès',
+        type: SuccessResponseDto,
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        description: 'Document non trouvé',
+        type: ErrorResponseDto,
+    })
+    @ApiResponse({
+        status: HttpStatus.FORBIDDEN,
+        description: 'Accès refusé',
+        type: ErrorResponseDto,
+    })
+    async removeDocument(
+        @Param('id', ParseIntPipe) id: number,
+        @Param('documentId', ParseIntPipe) documentId: number,
+        @Request() req,
+    ): Promise<SuccessResponseDto<null>> {
+        await this.ordreMissionService.removeDocument(id, documentId, req.user);
+        return {
+            success: true,
+            message: 'Document supprimé avec succès',
+        };
     }
 }
