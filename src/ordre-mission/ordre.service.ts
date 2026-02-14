@@ -2,6 +2,7 @@ import {
     Injectable,
     NotFoundException,
     ConflictException,
+    BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OrdreMission, StatutOrdreMission as PrismaStatutOrdreMission, StatutApurement as PrismaStatutApurement } from '@prisma/client';
@@ -24,66 +25,42 @@ export class OrdreMissionService {
 
     /**
      * Générer un numéro d'ordre de mission unique
-     * Format: MT-YYYY-NNNNNN (Abréviation Maison Transit - Année - Compteur séquentiel de 6 chiffres)
-     * Si pas de maison transit: OM-YYYY-NNNNNN
+     * Format: YY-NNNNNN (Année sur 2 chiffres - Compteur séquentiel de 6 chiffres)
+     * Exemple: 26-000001
      */
-    private async generateOrderNumber(maisonTransitId?: number): Promise<string> {
-        const currentYear = new Date().getFullYear();
-        let prefix = 'OM'; // Préfixe par défaut si pas de maison transit
-
-        // Si une maison de transit est fournie, récupérer son code
-        if (maisonTransitId) {
-            const maisonTransit = await this.prisma.maisonTransit.findUnique({
-                where: { id: maisonTransitId },
-                select: { code: true },
-            });
-
-            if (maisonTransit && maisonTransit.code) {
-                prefix = maisonTransit.code;
-            }
-        }
-
-        // Construire le préfixe complet (ex: MTD-2025-)
-        const fullPrefix = `${prefix}-${currentYear}-`;
+    private async generateOrderNumber(): Promise<string> {
+        const twoDigitYear = new Date().getFullYear().toString().slice(-2);
+        const fullPrefix = `${twoDigitYear}-`;
 
         // Trouver le dernier numéro avec ce préfixe (inclure tous les ordres, même supprimés)
         const lastOrder = await this.prisma.ordreMission.findFirst({
             where: {
-                number: {
-                    startsWith: fullPrefix,
-                },
+                number: { startsWith: fullPrefix },
             },
-            orderBy: {
-                number: 'desc',
-            },
-            select: {
-                number: true,
-            },
+            orderBy: { number: 'desc' },
+            select: { number: true },
         });
 
         let counter = 1;
 
-        // Si un ordre existe déjà avec ce préfixe, extraire le compteur et incrémenter
         if (lastOrder) {
             const parts = lastOrder.number.split('-');
-            if (parts.length === 3) {
-                const lastCounter = parseInt(parts[2], 10);
+            if (parts.length === 2) {
+                const lastCounter = parseInt(parts[1], 10);
                 if (!isNaN(lastCounter)) {
                     counter = lastCounter + 1;
                 }
             }
         }
 
-        // Formater le compteur sur 6 chiffres (ex: 000001)
         let counterStr = counter.toString().padStart(6, '0');
         let orderNumber = `${fullPrefix}${counterStr}`;
 
-        // Vérifier que le numéro n'existe pas déjà (sécurité supplémentaire)
+        // Vérifier l'unicité
         let existingOrder = await this.prisma.ordreMission.findFirst({
             where: { number: orderNumber },
         });
 
-        // Si le numéro existe déjà, incrémenter jusqu'à trouver un numéro disponible
         while (existingOrder) {
             counter++;
             counterStr = counter.toString().padStart(6, '0');
@@ -93,7 +70,6 @@ export class OrdreMissionService {
             });
         }
 
-        // Retourner le numéro complet (ex: MTD-2025-000001)
         return orderNumber;
     }
 
@@ -131,7 +107,7 @@ export class OrdreMissionService {
         let orderNumber = createOrdreMissionDto.number;
 
         if (!orderNumber) {
-            orderNumber = await this.generateOrderNumber(createOrdreMissionDto.maisonTransitId);
+            orderNumber = await this.generateOrderNumber();
         } else {
             // Si un numéro est fourni, vérifier qu'il n'existe pas déjà
             const existingOrdre = await this.prisma.ordreMission.findFirst({
@@ -420,7 +396,11 @@ export class OrdreMissionService {
                     declarations: {
                         where: { deletedAt: null },
                         include: {
-                            declaration: true,
+                            declaration: {
+                                include: {
+                                    colis: { where: { deletedAt: null } },
+                                },
+                            },
                         },
                     },
                 },
@@ -482,6 +462,14 @@ export class OrdreMissionService {
                     declarations: ordre.declarations.map((d) => ({
                         id: d.declaration.id,
                         numeroDeclaration: d.declaration.numeroDeclaration,
+                        colis: d.declaration.colis.map((c) => ({
+                            id: c.id,
+                            natureMarchandise: c.natureMarchandise,
+                            positionTarifaire: c.positionTarifaire,
+                            nbreColis: c.nbreColis,
+                            poids: c.poids ? c.poids.toNumber() : null,
+                            valeurDeclaree: c.valeurDeclaree ? c.valeurDeclaree.toNumber() : null,
+                        })),
                     })),
                     nbreParcelles: maxParcelles,
                     statutLivraisonParcelle,
@@ -618,6 +606,7 @@ export class OrdreMissionService {
                 colis: omd.declaration.colis.map((c) => ({
                     id: c.id,
                     natureMarchandise: c.natureMarchandise,
+                    positionTarifaire: c.positionTarifaire,
                     nbreColis: c.nbreColis,
                     poids: c.poids ? c.poids.toNumber() : null,
                     valeurDeclaree: c.valeurDeclaree
@@ -1002,6 +991,133 @@ export class OrdreMissionService {
             data: {
                 statut: dto.statut as any as PrismaStatutOrdreMission,
             },
+        });
+
+        return this.toResponseDto(updated);
+    }
+
+    /**
+     * Assigner un agent escorteur à un ordre de mission
+     * Uniquement possible si le statut est TRAITE, passe le statut à COTATION
+     */
+    async assignAgentEscorteur(
+        id: number,
+        agentId: number,
+    ): Promise<OrdreMissionResponseDto> {
+        const ordreMission = await this.prisma.ordreMission.findUnique({
+            where: { id },
+        });
+
+        if (!ordreMission || ordreMission.deletedAt) {
+            throw new NotFoundException(`Ordre de mission avec l'ID ${id} non trouvé`);
+        }
+
+        if (ordreMission.statut !== 'TRAITE') {
+            throw new BadRequestException(
+                `L'assignation d'un agent escorteur n'est possible que pour les ordres de mission avec le statut TRAITE. Statut actuel: ${ordreMission.statut}`,
+            );
+        }
+
+        const agent = await this.prisma.agent.findUnique({ where: { id: agentId } });
+        if (!agent) {
+            throw new NotFoundException(`Agent avec l'ID ${agentId} non trouvé`);
+        }
+
+        const updated = await this.prisma.ordreMission.update({
+            where: { id },
+            data: {
+                agentEscorteurId: agentId,
+                statut: PrismaStatutOrdreMission.COTATION,
+            },
+        });
+
+        return this.toResponseDto(updated);
+    }
+
+    /**
+     * Retirer l'agent escorteur d'un ordre de mission
+     */
+    async removeAgentEscorteur(id: number): Promise<OrdreMissionResponseDto> {
+        const ordreMission = await this.prisma.ordreMission.findUnique({
+            where: { id },
+        });
+
+        if (!ordreMission || ordreMission.deletedAt) {
+            throw new NotFoundException(`Ordre de mission avec l'ID ${id} non trouvé`);
+        }
+
+        if (!ordreMission.agentEscorteurId) {
+            throw new BadRequestException('Aucun agent escorteur assigné à cet ordre de mission');
+        }
+
+        const updated = await this.prisma.ordreMission.update({
+            where: { id },
+            data: { agentEscorteurId: null },
+        });
+
+        return this.toResponseDto(updated);
+    }
+
+    /**
+     * Mettre à jour le statut d'apurement d'un ordre de mission
+     * Si statutApurement = APURE, vérifie que toutes les déclarations sont totalement livrées (nbreColisRestant = 0)
+     * Marque aussi les déclarations livrées comme apurées
+     */
+    async updateStatutApurement(
+        id: number,
+        statutApurement: StatutApurement,
+    ): Promise<OrdreMissionResponseDto> {
+        const ordreMission = await this.prisma.ordreMission.findUnique({
+            where: { id },
+            include: {
+                declarations: {
+                    where: { deletedAt: null },
+                    include: { declaration: true },
+                },
+            },
+        });
+
+        if (!ordreMission || ordreMission.deletedAt) {
+            throw new NotFoundException(`Ordre de mission avec l'ID ${id} non trouvé`);
+        }
+
+        // Si on veut apurer, vérifier que toutes les déclarations sont totalement livrées
+        if (statutApurement === StatutApurement.APURE || statutApurement === StatutApurement.APURE_SE) {
+            const declarationsNonLivrees = ordreMission.declarations.filter(
+                (d) => d.declaration.nbreColisRestant > 0,
+            );
+
+            if (declarationsNonLivrees.length > 0) {
+                throw new BadRequestException(
+                    `Impossible d'apurer l'ordre de mission : ${declarationsNonLivrees.length} déclaration(s) n'ont pas été totalement livrées.`,
+                );
+            }
+        }
+
+        const updated = await this.prisma.$transaction(async (tx) => {
+            const updatedOrdre = await tx.ordreMission.update({
+                where: { id },
+                data: {
+                    statutApurement: statutApurement as any as PrismaStatutApurement,
+                },
+            });
+
+            // Si apuré, marquer les déclarations totalement livrées comme apurées
+            if (statutApurement === StatutApurement.APURE || statutApurement === StatutApurement.APURE_SE) {
+                for (const omd of ordreMission.declarations) {
+                    if (omd.declaration.nbreColisRestant === 0) {
+                        await tx.declaration.update({
+                            where: { id: omd.declaration.id },
+                            data: {
+                                statutApurement: statutApurement as any as PrismaStatutApurement,
+                                dateApurement: new Date(),
+                            },
+                        });
+                    }
+                }
+            }
+
+            return updatedOrdre;
         });
 
         return this.toResponseDto(updated);

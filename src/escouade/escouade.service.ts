@@ -55,6 +55,41 @@ export class EscouadeService {
     }
 
     /**
+     * Vérifier si un agent appartient déjà à une escouade (comme chef, adjoint ou membre)
+     */
+    private async checkAgentEscouadeMembership(
+        agentId: number,
+        excludeEscouadeId?: number,
+    ): Promise<{ escouadeName: string; role: 'CHEF' | 'ADJOINT' | 'MEMBRE' } | null> {
+        const excludeFilter = excludeEscouadeId ? { id: { not: excludeEscouadeId } } : {};
+
+        const asChef = await this.prisma.escouade.findFirst({
+            where: { chefId: agentId, deletedAt: null, ...excludeFilter },
+            select: { name: true },
+        });
+        if (asChef) return { escouadeName: asChef.name, role: 'CHEF' };
+
+        const asAdjoint = await this.prisma.escouade.findFirst({
+            where: { adjointId: agentId, deletedAt: null, ...excludeFilter },
+            select: { name: true },
+        });
+        if (asAdjoint) return { escouadeName: asAdjoint.name, role: 'ADJOINT' };
+
+        const asMember = await this.prisma.escouadeAgents.findFirst({
+            where: {
+                agentId,
+                ...(excludeEscouadeId ? { escouadeId: { not: excludeEscouadeId } } : {}),
+            },
+            include: { escouade: { select: { name: true, deletedAt: true } } },
+        });
+        if (asMember && !asMember.escouade.deletedAt) {
+            return { escouadeName: asMember.escouade.name, role: 'MEMBRE' };
+        }
+
+        return null;
+    }
+
+    /**
      * Créer une nouvelle escouade
      */
     async create(createEscouadeDto: CreateEscouadeDto): Promise<EscouadeResponseDto> {
@@ -320,18 +355,12 @@ export class EscouadeService {
                 continue;
             }
 
-            // Vérifier que l'agent n'appartient pas à une autre escouade
-            const existingInOther = await this.prisma.escouadeAgents.findFirst({
-                where: { agentId },
-                include: {
-                    escouade: { select: { name: true } },
-                },
-            });
-
-            if (existingInOther) {
+            // Vérifier que l'agent n'appartient pas à une autre escouade (chef, adjoint ou membre)
+            const membership = await this.checkAgentEscouadeMembership(agentId, escouadeId);
+            if (membership) {
                 notAdded.push({
                     agentId,
-                    reason: `Déjà membre de l'escouade "${existingInOther.escouade.name}"`,
+                    reason: `Déjà ${membership.role} de l'escouade "${membership.escouadeName}"`,
                 });
                 continue;
             }
@@ -423,6 +452,14 @@ export class EscouadeService {
             );
         }
 
+        // Vérifier que l'agent n'appartient pas déjà à une autre escouade
+        const membership = await this.checkAgentEscouadeMembership(chefId, escouadeId);
+        if (membership) {
+            throw new ConflictException(
+                `L'agent est déjà ${membership.role} de l'escouade "${membership.escouadeName}". Un agent ne peut appartenir qu'à une seule escouade.`,
+            );
+        }
+
         const updatedEscouade = await this.prisma.escouade.update({
             where: { id: escouadeId },
             data: {
@@ -456,6 +493,14 @@ export class EscouadeService {
         if (escouade.chefId === adjointId) {
             throw new BadRequestException(
                 'L\'adjoint ne peut pas être le même que le chef',
+            );
+        }
+
+        // Vérifier que l'agent n'appartient pas déjà à une autre escouade
+        const membership = await this.checkAgentEscouadeMembership(adjointId, escouadeId);
+        if (membership) {
+            throw new ConflictException(
+                `L'agent est déjà ${membership.role} de l'escouade "${membership.escouadeName}". Un agent ne peut appartenir qu'à une seule escouade.`,
             );
         }
 
