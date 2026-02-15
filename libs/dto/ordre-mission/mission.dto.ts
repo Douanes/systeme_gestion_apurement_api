@@ -1017,22 +1017,3 @@ export class OrdreMissionDocumentResponseDto {
     uploadedBy?: any;
 }
 
-// ===== DTOs pour agent escorteur et statut apurement =====
-
-export class AssignAgentEscorteurDto {
-    @ApiProperty({ description: 'ID de l\'agent escorteur', example: 5 })
-    @IsInt()
-    @IsNotEmpty()
-    agentId: number;
-}
-
-export class UpdateStatutApurementDto {
-    @ApiProperty({
-        description: 'Nouveau statut d\'apurement',
-        enum: StatutApurement,
-        example: StatutApurement.APURE,
-    })
-    @IsEnum(StatutApurement)
-    @IsNotEmpty()
-    statutApurement: StatutApurement;
-}
