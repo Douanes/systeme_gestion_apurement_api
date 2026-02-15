@@ -255,6 +255,7 @@ model OrdreMission {
   camions        OrdreMissionCamion[]
   voitures       OrdreMissionVoiture[]
   documents      OrdreMissionDocument[]
+  colis          Colis[]
 
   @@map("ordres_missions")
 }
@@ -343,6 +344,7 @@ model Declaration {
 model Colis {
   id                Int      @id @default(autoincrement())
   declarationId     Int?     @map("declaration_id")
+  ordreMissionId    Int?     @map("ordre_mission_id")
   natureMarchandise String   @map("nature_marchandise") @db.Text
   positionTarifaire Int?     @map("position_tarifaire")
   nbreColis         Int?     @map("nbre_colis")
@@ -355,8 +357,9 @@ model Colis {
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
 
-  declaration Declaration? @relation(fields: [declarationId], references: [id], onDelete: Cascade)
-  createdBy   User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  declaration  Declaration?  @relation(fields: [declarationId], references: [id], onDelete: Cascade)
+  ordreMission OrdreMission? @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
+  createdBy    User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   @@map("colis")
 }

@@ -237,7 +237,7 @@ export class OrdreMissionService {
                 }
             }
 
-            // 4. Créer les colis (liés aux déclarations)
+            // 4. Créer les colis (liés aux déclarations ET à l'ordre de mission)
             if (createOrdreMissionDto.colis?.length) {
                 for (const coli of createOrdreMissionDto.colis) {
                     const declarationId = declarationsCreees.get(coli.numeroDeclaration);
@@ -251,6 +251,7 @@ export class OrdreMissionService {
                     await tx.colis.create({
                         data: {
                             declarationId: declarationId,
+                            ordreMissionId: ordre.id,
                             natureMarchandise: coli.natureMarchandise,
                             positionTarifaire: coli.positionTarifaire,
                             nbreColis: coli.nbreColis,
@@ -411,12 +412,11 @@ export class OrdreMissionService {
                     declarations: {
                         where: { deletedAt: null },
                         include: {
-                            declaration: {
-                                include: {
-                                    colis: { where: { deletedAt: null } },
-                                },
-                            },
+                            declaration: true,
                         },
+                    },
+                    colis: {
+                        where: { deletedAt: null },
                     },
                 },
             }),
@@ -477,14 +477,16 @@ export class OrdreMissionService {
                     declarations: ordre.declarations.map((d) => ({
                         id: d.declaration.id,
                         numeroDeclaration: d.declaration.numeroDeclaration,
-                        colis: d.declaration.colis.map((c) => ({
-                            id: c.id,
-                            natureMarchandise: c.natureMarchandise,
-                            positionTarifaire: c.positionTarifaire,
-                            nbreColis: c.nbreColis,
-                            poids: c.poids ? c.poids.toNumber() : null,
-                            valeurDeclaree: c.valeurDeclaree ? c.valeurDeclaree.toNumber() : null,
-                        })),
+                        colis: ((ordre as any).colis || [])
+                            .filter((c) => c.declarationId === d.declaration.id)
+                            .map((c) => ({
+                                id: c.id,
+                                natureMarchandise: c.natureMarchandise,
+                                positionTarifaire: c.positionTarifaire,
+                                nbreColis: c.nbreColis,
+                                poids: c.poids ? c.poids.toNumber() : null,
+                                valeurDeclaree: c.valeurDeclaree ? c.valeurDeclaree.toNumber() : null,
+                            })),
                     })),
                     nbreParcelles: maxParcelles,
                     statutLivraisonParcelle,
@@ -528,7 +530,6 @@ export class OrdreMissionService {
                     include: {
                         declaration: {
                             include: {
-                                colis: { where: { deletedAt: null } },
                                 regime: true,
                                 maisonTransit: true,
                                 depositaire: true,
@@ -536,6 +537,9 @@ export class OrdreMissionService {
                             },
                         },
                     },
+                },
+                colis: {
+                    where: { deletedAt: null },
                 },
                 conteneurs: {
                     where: { deletedAt: null },
@@ -629,17 +633,19 @@ export class OrdreMissionService {
                         ? omd.poidsParcelle.toNumber()
                         : 0,
                 },
-                // Inclure les colis de cette déclaration
-                colis: omd.declaration.colis.map((c) => ({
-                    id: c.id,
-                    natureMarchandise: c.natureMarchandise,
-                    positionTarifaire: c.positionTarifaire,
-                    nbreColis: c.nbreColis,
-                    poids: c.poids ? c.poids.toNumber() : null,
-                    valeurDeclaree: c.valeurDeclaree
-                        ? c.valeurDeclaree.toNumber()
-                        : null,
-                })),
+                // Inclure uniquement les colis de cet ordre pour cette déclaration
+                colis: ((ordreMission as any).colis || [])
+                    .filter((c) => c.declarationId === omd.declaration.id)
+                    .map((c) => ({
+                        id: c.id,
+                        natureMarchandise: c.natureMarchandise,
+                        positionTarifaire: c.positionTarifaire,
+                        nbreColis: c.nbreColis,
+                        poids: c.poids ? c.poids.toNumber() : null,
+                        valeurDeclaree: c.valeurDeclaree
+                            ? c.valeurDeclaree.toNumber()
+                            : null,
+                    })),
             })),
             conteneurs: ordreMission.conteneurs.map((c) => ({
                 id: c.conteneur.id,
@@ -781,17 +787,14 @@ export class OrdreMissionService {
                     },
                 });
 
-                // Soft delete tous les anciens colis
-                const currentDeclarations = oldParcelles.map((p) => p.declarationId);
-                if (currentDeclarations.length > 0) {
-                    await tx.colis.updateMany({
-                        where: {
-                            declarationId: { in: currentDeclarations },
-                            deletedAt: null,
-                        },
-                        data: { deletedAt: new Date() },
-                    });
-                }
+                // Soft delete tous les anciens colis de cet ordre de mission
+                await tx.colis.updateMany({
+                    where: {
+                        ordreMissionId: id,
+                        deletedAt: null,
+                    },
+                    data: { deletedAt: new Date() },
+                });
 
                 // Créer les nouvelles parcelles
                 const declarationsCreees: Map<string, number> = new Map();
@@ -868,6 +871,7 @@ export class OrdreMissionService {
                         await tx.colis.create({
                             data: {
                                 declarationId: declarationId,
+                                ordreMissionId: id,
                                 natureMarchandise: coli.natureMarchandise,
                                 positionTarifaire: coli.positionTarifaire,
                                 nbreColis: coli.nbreColis,
