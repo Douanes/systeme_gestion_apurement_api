@@ -549,6 +549,14 @@ export class OrdreMissionService {
                     where: { deletedAt: null },
                     include: { voiture: true },
                 },
+                documents: {
+                    where: { deletedAt: null },
+                    orderBy: { uploadedAt: 'desc' },
+                    include: {
+                        maisonTransit: { select: { id: true, name: true, code: true } },
+                        uploadedBy: { select: { id: true, firstname: true, lastname: true } },
+                    },
+                },
             },
         });
 
@@ -655,6 +663,22 @@ export class OrdreMissionService {
                 driverNationality: v.driverNationality,
                 phone: v.phone,
             })),
+            documents: (ordreMission as any).documents?.map((doc: any) => ({
+                id: doc.id,
+                ordreMissionId: doc.ordreMissionId,
+                maisonTransitId: doc.maisonTransitId,
+                fileName: doc.fileName,
+                fileUrl: doc.publicId
+                    ? this.cloudinaryService.generateSignedUrl(doc.publicId)
+                    : doc.fileUrl,
+                fileSize: doc.fileSize,
+                mimeType: doc.mimeType,
+                publicId: doc.publicId,
+                uploadedById: doc.uploadedById,
+                uploadedAt: doc.uploadedAt,
+                maisonTransit: doc.maisonTransit || null,
+                uploadedBy: doc.uploadedBy || null,
+            })) || [],
         };
     }
 
@@ -1386,7 +1410,7 @@ export class OrdreMissionService {
                 fileUrl: dto.fileUrl,
                 fileSize: dto.fileSize,
                 mimeType: dto.mimeType,
-                cloudinaryId: dto.cloudinaryId,
+                publicId: dto.publicId,
                 uploadedById: currentUser.id,
             },
             include: {
@@ -1478,10 +1502,10 @@ export class OrdreMissionService {
             data: { deletedAt: new Date() },
         });
 
-        // Supprimer de Cloudinary si un cloudinaryId existe
-        if (document.cloudinaryId) {
+        // Supprimer de Cloudinary si un publicId existe
+        if (document.publicId) {
             try {
-                await this.cloudinaryService.deleteFile(document.cloudinaryId);
+                await this.cloudinaryService.deleteFile(document.publicId);
             } catch {
                 // Log silently - file may already be deleted
             }

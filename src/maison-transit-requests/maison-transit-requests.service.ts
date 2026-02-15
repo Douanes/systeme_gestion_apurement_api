@@ -541,36 +541,28 @@ export class MaisonTransitRequestsService {
 
         // Cas 1: Si c'est déjà juste un public_id (sans https://)
         if (!url.startsWith('http')) {
-            // C'est déjà un public_id, on génère directement l'URL signée
             try {
-                // Enlever l'extension .pdf si présente
-                const publicId = url.replace(/\.pdf$/i, '');
-                return this.cloudinaryService.generateSignedUrl(publicId);
+                return this.cloudinaryService.generateSignedUrl(url);
             } catch (error) {
                 this.logger.error(`Erreur lors de la génération de l'URL signée pour ${url}: ${error.message}`);
                 return url;
             }
         }
 
-        // Cas 2: URL complète Cloudinary - extraire le public_id
+        // Cas 2: URL complète Cloudinary - extraire le public_id (avec extension)
         // Formats possibles:
-        // - https://res.cloudinary.com/{cloud}/raw/upload/{public_id}.pdf
-        // - https://res.cloudinary.com/{cloud}/raw/upload/v{version}/{public_id}.pdf
-        // - https://res.cloudinary.com/{cloud}/raw/authenticated/s--SIG--/v{version}/{public_id}.pdf
-
-        // Extraire tout ce qui vient après le dernier "upload/" ou le dernier "/"
+        // - https://res.cloudinary.com/{cloud}/raw/upload/{public_id}.ext
+        // - https://res.cloudinary.com/{cloud}/raw/upload/v{version}/{public_id}.ext
+        // - https://res.cloudinary.com/{cloud}/raw/authenticated/s--SIG--/v{version}/{public_id}.ext
         const parts = url.split('/');
         const uploadIndex = parts.lastIndexOf('upload');
 
         if (uploadIndex === -1) {
-            // Essayer de trouver le public_id après 'authenticated'
             const authIndex = parts.findIndex(p => p === 'authenticated');
             if (authIndex !== -1) {
-                // Prendre tout après la signature (s--XXX--) et la version (vXXXX)
                 const remaining = parts.slice(authIndex + 1);
-                // Enlever signature et version
                 const filtered = remaining.filter(p => !p.startsWith('s--') && !p.match(/^v\d+$/));
-                const publicId = filtered.join('/').replace(/\.pdf$/i, '');
+                const publicId = filtered.join('/');
 
                 this.logger.log(`Public ID extrait (authenticated): ${publicId}`);
 
@@ -586,10 +578,9 @@ export class MaisonTransitRequestsService {
             return url;
         }
 
-        // Prendre tout après 'upload', enlever 'v{version}' si présent, et enlever l'extension
         const afterUpload = parts.slice(uploadIndex + 1);
-        const filtered = afterUpload.filter(p => !p.match(/^v\d+$/)); // Enlever vXXXX
-        const publicId = filtered.join('/').replace(/\.pdf$/i, '');
+        const filtered = afterUpload.filter(p => !p.match(/^v\d+$/));
+        const publicId = filtered.join('/');
 
         this.logger.log(`Public ID extrait (upload): ${publicId}`);
 

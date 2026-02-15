@@ -143,7 +143,7 @@ export class CloudinaryService {
      * avec l'API_SECRET peut générer ces URLs. Pour révoquer l'accès, il faut
      * supprimer le fichier ou le déplacer vers un autre public_id.
      *
-     * @param publicId - Le public_id du fichier dans Cloudinary (sans extension)
+     * @param publicId - Le public_id du fichier dans Cloudinary (avec ou sans extension)
      * @returns URL signée pour accéder au fichier
      */
     generateSignedUrl(publicId: string): string {
@@ -153,31 +153,48 @@ export class CloudinaryService {
             throw new Error('CLOUDINARY_CLOUD_NAME is not configured');
         }
 
-        // Enlever l'extension .pdf si présente
-        const cleanPublicId = publicId.replace(/\.pdf$/i, '');
+        // Détecter l'extension du fichier
+        const extensionMatch = publicId.match(/\.([a-zA-Z0-9]+)$/);
+        const extension = extensionMatch ? extensionMatch[1].toLowerCase() : null;
 
-        this.logger.log(`Génération URL signée pour: ${cleanPublicId}`);
+        // Enlever l'extension du public_id (Cloudinary la gère via le paramètre format)
+        const cleanPublicId = extension
+            ? publicId.replace(/\.[a-zA-Z0-9]+$/, '')
+            : publicId;
 
-        // Utiliser cloudinary.url() mais désactiver les analytics
-        // Configuration pour éviter les paramètres indésirables
+        this.logger.log(`Génération URL signée pour: ${cleanPublicId} (extension: ${extension || 'aucune'})`);
+
+        // Déterminer les paramètres selon le type de fichier
+        const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico'];
+        const isImage = extension && imageExtensions.includes(extension);
+
         const originalAnalytics = (cloudinary.config() as any).analytics;
         (cloudinary.config() as any).analytics = false;
 
         try {
-            const signedUrl = cloudinary.url(cleanPublicId, {
+            const urlOptions: any = {
                 sign_url: true,
                 type: 'authenticated',
                 resource_type: 'raw',
                 secure: true,
-                format: 'pdf',
-                flags: 'attachment',
-                version: false, // Pas de version automatique
-            });
+            };
+
+            // Ajouter le format seulement si on a une extension
+            if (extension) {
+                urlOptions.format = extension;
+            }
+
+            // Pour les fichiers non-image, forcer le téléchargement
+            // Pour les images, permettre l'affichage inline
+            if (!isImage) {
+                urlOptions.flags = 'attachment';
+            }
+
+            const signedUrl = cloudinary.url(cleanPublicId, urlOptions);
 
             this.logger.log(`URL signée générée: ${signedUrl}`);
             return signedUrl;
         } finally {
-            // Restaurer la configuration analytics
             (cloudinary.config() as any).analytics = originalAnalytics;
         }
     }

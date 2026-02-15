@@ -912,6 +912,25 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
         driverNationality?: string | null;
         phone?: string | null;
     }>;
+
+    @ApiPropertyOptional({
+        description: 'Documents attachés à l\'ordre de mission',
+        type: 'array',
+    })
+    documents?: Array<{
+        id: number;
+        ordreMissionId: number;
+        maisonTransitId: number | null;
+        fileName: string;
+        fileUrl: string;
+        fileSize?: number | null;
+        mimeType?: string | null;
+        publicId?: string | null;
+        uploadedById: number | null;
+        uploadedAt: Date;
+        maisonTransit?: any;
+        uploadedBy?: any;
+    }>;
 }
 
 // ===== DTOs pour les documents d'ordre de mission =====
@@ -973,10 +992,10 @@ export class CreateOrdreMissionDocumentDto {
     @IsString()
     mimeType?: string;
 
-    @ApiPropertyOptional({ description: 'Public ID Cloudinary', example: 'ordre-mission-documents/document_123' })
+    @ApiPropertyOptional({ description: 'Public ID Cloudinary (public_id retourné par Cloudinary)', example: 'ordre-mission-documents/document_123' })
     @IsOptional()
     @IsString()
-    cloudinaryId?: string;
+    publicId?: string;
 }
 
 export class OrdreMissionDocumentResponseDto {
@@ -1002,7 +1021,7 @@ export class OrdreMissionDocumentResponseDto {
     mimeType?: string | null;
 
     @ApiPropertyOptional({ example: 'ordre-mission-documents/document_123' })
-    cloudinaryId?: string | null;
+    publicId?: string | null;
 
     @ApiProperty({ example: 1, required: false })
     uploadedById: number | null;
