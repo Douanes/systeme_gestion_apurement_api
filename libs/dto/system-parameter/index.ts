@@ -8,12 +8,6 @@ export class SystemParameterResponseDto {
     @ApiProperty({ example: 1 })
     id: number;
 
-    @ApiProperty({ example: 3, required: false })
-    chefBureauId: number | null;
-
-    @ApiProperty({ example: 5, required: false })
-    chefSectionId: number | null;
-
     @ApiProperty({ example: '+221338001234', required: false })
     phone: string | null;
 
@@ -29,11 +23,39 @@ export class SystemParameterResponseDto {
     @ApiProperty({ example: '2024-12-22T10:30:00.000Z' })
     updatedAt: Date;
 
-    @ApiProperty({ required: false, description: 'Agent chef de bureau' })
-    chefBureau?: any;
+    @ApiProperty({
+        required: false,
+        description: 'Agent chef de bureau',
+        example: {
+            id: 3,
+            matricule: 'AG-003',
+            firstname: 'Jean',
+            lastname: 'Dupont',
+        },
+    })
+    chefBureau?: {
+        id: number;
+        matricule?: string | null;
+        firstname: string;
+        lastname: string;
+    } | null;
 
-    @ApiProperty({ required: false, description: 'Agent chef de section' })
-    chefSection?: any;
+    @ApiProperty({
+        required: false,
+        description: 'Agent chef de section',
+        example: {
+            id: 5,
+            matricule: 'AG-005',
+            firstname: 'Marie',
+            lastname: 'Sarr',
+        },
+    })
+    chefSection?: {
+        id: number;
+        matricule?: string | null;
+        firstname: string;
+        lastname: string;
+    } | null;
 }
 
 /**

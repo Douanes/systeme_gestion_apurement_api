@@ -642,6 +642,29 @@ export class OrdreMissionResponseDto {
     updatedAt: Date;
 
     @ApiPropertyOptional({
+        description: 'Nombre de pièces jointes',
+        example: 2,
+    })
+    documentCount?: number;
+
+    @ApiPropertyOptional({
+        description: 'Agent escorteur',
+        nullable: true,
+        example: {
+            id: 1,
+            matricule: 'AG-001',
+            firstname: 'Jean',
+            lastname: 'Dupont',
+        },
+    })
+    agentEscorteur?: {
+        id: number;
+        matricule?: string | null;
+        firstname: string;
+        lastname: string;
+    } | null;
+
+    @ApiPropertyOptional({
         description: 'Liste des déclarations liées à cet ordre de mission',
         type: 'array',
         isArray: true,

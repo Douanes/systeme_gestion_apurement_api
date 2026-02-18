@@ -104,6 +104,8 @@ export class OrdreMissionService {
             chefSectionId: ordreMission.chefSectionId,
             createdAt: ordreMission.createdAt,
             updatedAt: ordreMission.updatedAt,
+            agentEscorteur: (ordreMission as any).agentEscorteur || null,
+            documentCount: (ordreMission as any)._count?.documents ?? 0,
         };
     }
 
@@ -417,6 +419,10 @@ export class OrdreMissionService {
                     },
                     colis: {
                         where: { deletedAt: null },
+                    },
+                    agentEscorteur: true,
+                    _count: {
+                        select: { documents: { where: { deletedAt: null } } },
                     },
                 },
             }),
