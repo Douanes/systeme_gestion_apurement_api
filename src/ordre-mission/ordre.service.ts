@@ -1052,10 +1052,12 @@ export class OrdreMissionService {
     /**
      * Assigner un agent escorteur à un ordre de mission
      * Uniquement possible si le statut est TRAITE, passe le statut à COTATION
+     * SI l'ordre est apuré, seul le chef de bureau ou chef de section peut changer l'agent
      */
     async assignAgentEscorteur(
         id: number,
         agentId: number,
+        currentUser: { id: number; role: string },
     ): Promise<OrdreMissionResponseDto> {
         const ordreMission = await this.prisma.ordreMission.findUnique({
             where: { id },
@@ -1063,6 +1065,27 @@ export class OrdreMissionService {
 
         if (!ordreMission || ordreMission.deletedAt) {
             throw new NotFoundException(`Ordre de mission avec l'ID ${id} non trouvé`);
+        }
+
+        // Sécurité : Si l'ordre est apuré, on ne peut changer l'agent que si on est chef de bureau ou chef de section
+        if (ordreMission.statutApurement === StatutApurement.APURE || ordreMission.statutApurement === StatutApurement.APURE_SE) {
+            const systemParam = await this.prisma.systemParameter.findFirst({
+                include: {
+                    chefBureau: { select: { userId: true } },
+                    chefSection: { select: { userId: true } },
+                },
+            });
+
+            const isAuthorized = 
+                (systemParam?.chefBureau?.userId === currentUser.id) || 
+                (systemParam?.chefSection?.userId === currentUser.id) ||
+                currentUser.role === 'ADMIN';
+
+            if (!isAuthorized) {
+                throw new ForbiddenException(
+                    "L'ordre de mission est déjà apuré. Seul le chef de bureau ou le chef de section peut modifier l'agent escorteur.",
+                );
+            }
         }
 
         if (ordreMission.statut !== 'TRAITE') {
@@ -1090,13 +1113,37 @@ export class OrdreMissionService {
     /**
      * Retirer l'agent escorteur d'un ordre de mission
      */
-    async removeAgentEscorteur(id: number): Promise<OrdreMissionResponseDto> {
+    async removeAgentEscorteur(
+        id: number,
+        currentUser: { id: number; role: string },
+    ): Promise<OrdreMissionResponseDto> {
         const ordreMission = await this.prisma.ordreMission.findUnique({
             where: { id },
         });
 
         if (!ordreMission || ordreMission.deletedAt) {
             throw new NotFoundException(`Ordre de mission avec l'ID ${id} non trouvé`);
+        }
+
+        // Sécurité : Si l'ordre est apuré, on ne peut retirer l'agent que si on est chef de bureau ou chef de section
+        if (ordreMission.statutApurement === StatutApurement.APURE || ordreMission.statutApurement === StatutApurement.APURE_SE) {
+            const systemParam = await this.prisma.systemParameter.findFirst({
+                include: {
+                    chefBureau: { select: { userId: true } },
+                    chefSection: { select: { userId: true } },
+                },
+            });
+
+            const isAuthorized = 
+                (systemParam?.chefBureau?.userId === currentUser.id) || 
+                (systemParam?.chefSection?.userId === currentUser.id) ||
+                currentUser.role === 'ADMIN';
+
+            if (!isAuthorized) {
+                throw new ForbiddenException(
+                    "L'ordre de mission est déjà apuré. Seul le chef de bureau ou le chef de section peut retirer l'agent escorteur.",
+                );
+            }
         }
 
         if (!ordreMission.agentEscorteurId) {
@@ -1134,18 +1181,8 @@ export class OrdreMissionService {
             throw new NotFoundException(`Ordre de mission avec l'ID ${id} non trouvé`);
         }
 
-        // Si on veut apurer, vérifier que toutes les déclarations sont totalement livrées
-        if (statutApurement === StatutApurement.APURE || statutApurement === StatutApurement.APURE_SE) {
-            const declarationsNonLivrees = ordreMission.declarations.filter(
-                (d) => d.declaration.nbreColisRestant > 0,
-            );
-
-            if (declarationsNonLivrees.length > 0) {
-                throw new BadRequestException(
-                    `Impossible d'apurer l'ordre de mission : ${declarationsNonLivrees.length} déclaration(s) n'ont pas été totalement livrées.`,
-                );
-            }
-        }
+        // Les ordres de mission peuvent être apurés indépendamment du statut des déclarations
+        // (Ancienne logique qui bloquait l'apurement si des déclarations étaient non livrées retirée)
 
         const updated = await this.prisma.$transaction(async (tx) => {
             const updatedOrdre = await tx.ordreMission.update({
@@ -1155,10 +1192,12 @@ export class OrdreMissionService {
                 },
             });
 
-            // Si apuré, marquer les déclarations totalement livrées comme apurées
+            // Si apuré, marquer les déclarations totalement livrées (Poids et Nombre de colis) comme apurées
             if (statutApurement === StatutApurement.APURE || statutApurement === StatutApurement.APURE_SE) {
                 for (const omd of ordreMission.declarations) {
-                    if (omd.declaration.nbreColisRestant === 0) {
+                    // Pour les déclarations il faut que le poids et nombre de colis déclarés = au poids et nombre de colis livrés
+                    // Ce qui correspond à nbreColisRestant === 0 et poidsRestant === 0
+                    if (omd.declaration.nbreColisRestant === 0 && Number(omd.declaration.poidsRestant) === 0) {
                         await tx.declaration.update({
                             where: { id: omd.declaration.id },
                             data: {

@@ -359,8 +359,9 @@ export class OrdreMissionController {
     async assignAgentEscorteur(
         @Param('id', ParseIntPipe) id: number,
         @Body() dto: AssignAgentEscorteurDto,
+        @Request() req,
     ): Promise<OrdreMissionResponseDto> {
-        return this.ordreMissionService.assignAgentEscorteur(id, dto.agentId);
+        return this.ordreMissionService.assignAgentEscorteur(id, dto.agentId, req.user);
     }
 
     @Delete(':id/agent-escorteur')
@@ -374,8 +375,9 @@ export class OrdreMissionController {
     @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Ordre de mission non trouvé', type: ErrorResponseDto })
     async removeAgentEscorteur(
         @Param('id', ParseIntPipe) id: number,
+        @Request() req,
     ): Promise<OrdreMissionResponseDto> {
-        return this.ordreMissionService.removeAgentEscorteur(id);
+        return this.ordreMissionService.removeAgentEscorteur(id, req.user);
     }
 
     @Patch(':id/statut-apurement')
