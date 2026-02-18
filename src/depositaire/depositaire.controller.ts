@@ -137,8 +137,9 @@ export class DepositaireController {
     })
     async findOne(
         @Param('id', ParseIntPipe) id: number,
+        @Request() req,
     ): Promise<DepositaireWithRelationsDto> {
-        return this.depositaireService.findOne(id);
+        return this.depositaireService.findOne(id, req.user);
     }
 
     @Get(':id/statistics')
@@ -174,12 +175,15 @@ export class DepositaireController {
         description: 'Non authentifié',
         type: ErrorResponseDto,
     })
-    async getStatistics(@Param('id', ParseIntPipe) id: number) {
-        return this.depositaireService.getStatistics(id);
+    async getStatistics(
+        @Param('id', ParseIntPipe) id: number,
+        @Request() req,
+    ) {
+        return this.depositaireService.getStatistics(id, req.user);
     }
 
     @Put(':id')
-    @Roles(UserRole.ADMIN, UserRole.SUPERVISEUR)
+    @Roles(UserRole.ADMIN, UserRole.SUPERVISEUR, UserRole.TRANSITAIRE)
     @ApiOperation({
         summary: 'Mettre à jour un dépositaire',
         description: 'Met à jour les informations d\'un dépositaire existant',
@@ -219,13 +223,14 @@ export class DepositaireController {
     async update(
         @Param('id', ParseIntPipe) id: number,
         @Body() updateDepositaireDto: UpdateDepositaireDto,
+        @Request() req,
     ): Promise<DepositaireResponseDto> {
-        return this.depositaireService.update(id, updateDepositaireDto);
+        return this.depositaireService.update(id, updateDepositaireDto, req.user);
     }
 
     @Delete(':id')
     @HttpCode(HttpStatus.NO_CONTENT)
-    @Roles(UserRole.ADMIN)
+    @Roles(UserRole.ADMIN, UserRole.SUPERVISEUR, UserRole.TRANSITAIRE)
     @ApiOperation({
         summary: 'Supprimer un dépositaire',
         description: 'Supprime un dépositaire du système (soft delete)',
@@ -261,7 +266,10 @@ export class DepositaireController {
         description: 'Accès refusé - Rôle ADMIN requis',
         type: ErrorResponseDto,
     })
-    async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
-        return this.depositaireService.remove(id);
+    async remove(
+        @Param('id', ParseIntPipe) id: number,
+        @Request() req,
+    ): Promise<void> {
+        return this.depositaireService.remove(id, req.user);
     }
 }

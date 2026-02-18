@@ -3,6 +3,7 @@ import {
     NotFoundException,
     ConflictException,
     BadRequestException,
+    ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { Depositaire } from '@prisma/client';
@@ -48,6 +49,17 @@ export class DepositaireService {
             declarationsCount: depositaire._count?.savedDeclarations,
             ordreMissionsCount: depositaire._count?.ordreMissions,
         };
+    }
+
+    /**
+     * Vérifier si l'utilisateur possède/a accès au dépositaire
+     */
+    private checkOwnership(depositaire: any, currentUser?: { role: string; maisonTransitIds: number[] }) {
+        if (currentUser && !['ADMIN', 'AGENT', 'SUPERVISEUR'].includes(currentUser.role)) {
+            if (!depositaire.maisonTransitId || !currentUser.maisonTransitIds.includes(depositaire.maisonTransitId)) {
+                throw new ForbiddenException("Vous n'avez pas les droits nécessaires pour accéder à ce dépositaire");
+            }
+        }
     }
 
     /**
@@ -181,7 +193,10 @@ export class DepositaireService {
     /**
      * Récupérer un dépositaire par ID
      */
-    async findOne(id: number): Promise<DepositaireWithRelationsDto> {
+    async findOne(
+        id: number,
+        currentUser?: { role: string; maisonTransitIds: number[] },
+    ): Promise<DepositaireWithRelationsDto> {
         const depositaire = await this.prisma.depositaire.findFirst({
             where: {
                 id,
@@ -210,6 +225,9 @@ export class DepositaireService {
             throw new NotFoundException(`Dépositaire avec l'ID ${id} non trouvé`);
         }
 
+        // Vérifier les droits
+        this.checkOwnership(depositaire, currentUser);
+
         return this.toResponseDtoWithRelations(depositaire);
     }
 
@@ -219,9 +237,13 @@ export class DepositaireService {
     async update(
         id: number,
         updateDepositaireDto: UpdateDepositaireDto,
+        currentUser?: { role: string; maisonTransitIds: number[] },
     ): Promise<DepositaireResponseDto> {
         // Vérifier si le dépositaire existe
-        await this.findOne(id);
+        const existing = await this.findOne(id, currentUser);
+
+        // Vérifier les droits
+        this.checkOwnership(existing, currentUser);
 
         // Vérifier si une maison de transit existe si fournie
         if (updateDepositaireDto.maisonTransitId) {
@@ -260,9 +282,15 @@ export class DepositaireService {
     /**
      * Supprimer un dépositaire (soft delete)
      */
-    async remove(id: number): Promise<void> {
+    async remove(
+        id: number,
+        currentUser?: { role: string; maisonTransitIds: number[] },
+    ): Promise<void> {
         // Vérifier si le dépositaire existe
-        await this.findOne(id);
+        const existing = await this.findOne(id, currentUser);
+
+        // Vérifier les droits
+        this.checkOwnership(existing, currentUser);
 
         // Vérifier s'il y a des ordres de mission associés
         const ordreMissionsCount = await this.prisma.ordreMission.count({
@@ -306,8 +334,11 @@ export class DepositaireService {
     /**
      * Récupérer les statistiques d'un dépositaire
      */
-    async getStatistics(id: number) {
-        await this.findOne(id);
+    async getStatistics(
+        id: number,
+        currentUser?: { role: string; maisonTransitIds: number[] },
+    ) {
+        await this.findOne(id, currentUser);
 
         const [declarationsCount, ordreMissionsCount] = await Promise.all([
             this.prisma.declaration.count({
