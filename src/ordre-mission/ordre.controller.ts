@@ -311,8 +311,9 @@ export class OrdreMissionController {
     async update(
         @Param('id', ParseIntPipe) id: number,
         @Body() updateOrdreMissionDto: UpdateOrdreMissionDto,
+        @Request() req,
     ): Promise<OrdreMissionResponseDto> {
-        return this.ordreMissionService.update(id, updateOrdreMissionDto);
+        return this.ordreMissionService.update(id, updateOrdreMissionDto, req.user);
     }
 
     @Patch(':id/statut')

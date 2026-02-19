@@ -34,6 +34,13 @@ export enum StatutLivraisonParcelle {
     TOTALEMENT_LIVRE = 'TOTALEMENT_LIVRE',
 }
 
+export enum ModificationRequestStatus {
+    PENDING = 'PENDING',
+    APPROVED = 'APPROVED',
+    REJECTED = 'REJECTED',
+    COMPLETED = 'COMPLETED',
+}
+
 // Nested DTOs - CREATE new entities
 export class CreateNestedDeclarationDto {
     @ApiProperty({
@@ -518,6 +525,86 @@ export class ChangeStatutOrdreMissionDto {
     statut: StatutOrdreMission;
 }
 
+export class CreateModificationRequestDto {
+    @ApiProperty({
+        description: 'Raison de la demande de rectification',
+        example: 'Erreur sur le nombre de colis dans la déclaration DECL-2024-001',
+    })
+    @IsString()
+    @IsNotEmpty()
+    reason: string;
+}
+
+export class ReviewModificationRequestDto {
+    @ApiProperty({
+        description: 'Nouveau statut de la demande',
+        example: ModificationRequestStatus.APPROVED,
+        enum: [ModificationRequestStatus.APPROVED, ModificationRequestStatus.REJECTED],
+    })
+    @IsEnum([ModificationRequestStatus.APPROVED, ModificationRequestStatus.REJECTED])
+    @IsNotEmpty()
+    status: ModificationRequestStatus;
+
+    @ApiPropertyOptional({
+        description: 'Motif du rejet (si applicable)',
+        example: 'Demande non justifiée',
+    })
+    @IsOptional()
+    @IsString()
+    rejectionReason?: string;
+}
+
+export class ModificationRequestResponseDto {
+    @ApiProperty({ example: 1 })
+    id: number;
+
+    @ApiProperty({ example: 1 })
+    ordreMissionId: number;
+
+    @ApiProperty({ example: 1 })
+    requesterId: number;
+
+    @ApiPropertyOptional({ example: 2, nullable: true })
+    reviewerId?: number | null;
+
+    @ApiProperty({ example: 'Erreur de saisie' })
+    reason: string;
+
+    @ApiPropertyOptional({ example: 'Refusé pour raison X', nullable: true })
+    rejectionReason?: string | null;
+
+    @ApiProperty({ enum: ModificationRequestStatus, example: ModificationRequestStatus.PENDING })
+    status: ModificationRequestStatus;
+
+    @ApiProperty({ example: '2024-01-15T10:30:00.000Z' })
+    createdAt: Date;
+
+    @ApiProperty({ example: '2024-01-15T10:30:00.000Z' })
+    updatedAt: Date;
+
+    @ApiPropertyOptional({ example: '2024-01-15T11:00:00.000Z', nullable: true })
+    reviewedAt?: Date | null;
+
+    @ApiPropertyOptional({
+        example: { id: 1, firstname: 'John', lastname: 'Doe' },
+    })
+    requester?: {
+        id: number;
+        firstname: string;
+        lastname: string;
+    };
+
+    @ApiPropertyOptional({
+        example: { id: 2, firstname: 'Jane', lastname: 'Smith' },
+        nullable: true,
+    })
+    reviewer?: {
+        id: number;
+        firstname: string;
+        lastname: string;
+    } | null;
+}
+
 export class OrdreMissionResponseDto {
     @ApiProperty({
         description: 'ID unique de l\'ordre de mission',
@@ -690,6 +777,13 @@ export class OrdreMissionResponseDto {
         enum: StatutLivraisonParcelle,
     })
     statutLivraisonParcelle?: StatutLivraisonParcelle;
+
+    @ApiPropertyOptional({
+        description: 'Dernière demande de modification',
+        type: ModificationRequestResponseDto,
+        nullable: true,
+    })
+    latestModificationRequest?: ModificationRequestResponseDto | null;
 }
 
 export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {

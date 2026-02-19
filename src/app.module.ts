@@ -20,6 +20,7 @@ import { MaisonTransitRequestsModule } from './maison-transit-requests/maison-tr
 import { DepositaireModule } from './depositaire/depositaire.module';
 import { DeclarationModule } from './declaration/declaration.module';
 import { SystemParameterModule } from './system-parameter/system-parameter.module';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { SystemParameterModule } from './system-parameter/system-parameter.modul
     OrdreMissionModule,
     StatisticsModule,
     SystemParameterModule,
+    NotificationModule,
   ],
   providers: [ProfileService],
   controllers: [ProfileController],
