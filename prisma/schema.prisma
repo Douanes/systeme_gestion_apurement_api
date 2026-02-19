@@ -54,6 +54,13 @@ enum RequestStatus {
   ANNULE
 }
 
+enum ModificationRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
 enum DocumentType {
   REGISTRE_COMMERCE
   NINEA
@@ -92,6 +99,10 @@ model User {
   maisonTransitRequests  MaisonTransitRequest[]   @relation("RequestCreator")
   reviewedRequests       MaisonTransitRequest[]   @relation("RequestReviewer")
   ordreMissionDocuments  OrdreMissionDocument[]
+  
+  modificationRequests    OrdreMissionModificationRequest[] @relation("ModifRequester")
+  reviewedModifRequests   OrdreMissionModificationRequest[] @relation("ModifReviewer")
+  notifications           Notification[]
 
   @@map("users")
 }
@@ -256,6 +267,7 @@ model OrdreMission {
   voitures       OrdreMissionVoiture[]
   documents      OrdreMissionDocument[]
   colis          Colis[]
+  modificationRequests OrdreMissionModificationRequest[]
 
   @@map("ordres_missions")
 }
@@ -688,4 +700,38 @@ model OrdreMissionDocument {
   @@index([ordreMissionId])
   @@index([maisonTransitId])
   @@map("ordre_mission_documents")
+}
+
+model OrdreMissionModificationRequest {
+  id              Int                       @id @default(autoincrement())
+  ordreMissionId  Int                       @map("ordre_mission_id")
+  requesterId     Int                       @map("requester_id")
+  reviewerId      Int?                      @map("reviewer_id")
+  reason          String                    @db.Text
+  rejectionReason String?                   @map("rejection_reason") @db.Text
+  status          ModificationRequestStatus @default(PENDING)
+  createdAt       DateTime                  @default(now()) @map("created_at")
+  updatedAt       DateTime                  @updatedAt @map("updated_at")
+  reviewedAt      DateTime?                 @map("reviewed_at")
+
+  ordreMission OrdreMission @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
+  requester    User         @relation("ModifRequester", fields: [requesterId], references: [id])
+  reviewer     User?        @relation("ModifReviewer", fields: [reviewerId], references: [id])
+
+  @@map("ordre_mission_modification_requests")
+}
+
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    Int              @map("user_id")
+  title     String
+  message   String           @db.Text
+  type      TypeNotification @default(INFO)
+  isRead    Boolean          @default(false) @map("is_read")
+  relatedId Int?             @map("related_id") // ID de l'objet lié (ex: ordreMissionId)
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
 }

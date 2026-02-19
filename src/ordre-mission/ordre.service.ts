@@ -12,6 +12,7 @@ import {
     CreateOrdreMissionDto,
     UpdateOrdreMissionDto,
     ChangeStatutOrdreMissionDto,
+    ModificationRequestStatus,
     OrdreMissionResponseDto,
     OrdreMissionWithRelationsDto,
     StatutOrdreMission,
@@ -106,6 +107,7 @@ export class OrdreMissionService {
             updatedAt: ordreMission.updatedAt,
             agentEscorteur: (ordreMission as any).agentEscorteur || null,
             documentCount: (ordreMission as any)._count?.documents ?? 0,
+            latestModificationRequest: (ordreMission as any).modificationRequests?.[0] || null,
         };
     }
 
@@ -405,7 +407,7 @@ export class OrdreMissionService {
         }
 
         const [ordres, total] = await Promise.all([
-            this.prisma.ordreMission.findMany({
+            (this.prisma.ordreMission as any).findMany({
                 where,
                 skip,
                 take: limit,
@@ -424,6 +426,14 @@ export class OrdreMissionService {
                     _count: {
                         select: { documents: { where: { deletedAt: null } } },
                     },
+                    modificationRequests: {
+                        orderBy: { createdAt: 'desc' },
+                        take: 1,
+                        include: {
+                            requester: { select: { id: true, firstname: true, lastname: true } },
+                            reviewer: { select: { id: true, firstname: true, lastname: true } },
+                        },
+                    },
                 },
             }),
             this.prisma.ordreMission.count({ where }),
@@ -431,7 +441,7 @@ export class OrdreMissionService {
 
         // Pour chaque ordre, calculer le nombre de parcelles et le statut de livraison
         const ordresWithParcelles = await Promise.all(
-            ordres.map(async (ordre) => {
+            ordres.map(async (ordre: any) => {
                 // Récupérer les IDs des déclarations liées à cet ordre
                 const declarationIds = ordre.declarations.map((d) => d.declarationId);
 
@@ -520,7 +530,7 @@ export class OrdreMissionService {
         id: number,
         includeRelations = false,
     ): Promise<OrdreMissionResponseDto | OrdreMissionWithRelationsDto> {
-        const ordreMission = await this.prisma.ordreMission.findFirst({
+        const ordreMission = await (this.prisma.ordreMission as any).findFirst({
             where: { id, deletedAt: null },
             include: {
                 depositaire: true,
@@ -567,6 +577,14 @@ export class OrdreMissionService {
                         uploadedBy: { select: { id: true, firstname: true, lastname: true } },
                     },
                 },
+                modificationRequests: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                    include: {
+                        requester: { select: { id: true, firstname: true, lastname: true } },
+                        reviewer: { select: { id: true, firstname: true, lastname: true } },
+                    },
+                },
             },
         });
 
@@ -577,21 +595,21 @@ export class OrdreMissionService {
         }
 
         return {
-            ...this.toResponseDto(ordreMission),
-            depositaire: ordreMission.depositaire,
-            maisonTransit: ordreMission.maisonTransit,
-            createdBy: ordreMission.createdBy,
-            escouade: ordreMission.ecouade
+            ...this.toResponseDto(ordreMission as any),
+            depositaire: (ordreMission as any).depositaire,
+            maisonTransit: (ordreMission as any).maisonTransit,
+            createdBy: (ordreMission as any).createdBy,
+            escouade: (ordreMission as any).ecouade
                 ? {
-                    id: ordreMission.ecouade.id,
-                    name: ordreMission.ecouade.name,
+                    id: (ordreMission as any).ecouade.id,
+                    name: (ordreMission as any).ecouade.name,
                 }
                 : null,
-            agentEscorteur: ordreMission.agentEscorteur,
-            bureauSortie: ordreMission.bureauSortie,
+            agentEscorteur: (ordreMission as any).agentEscorteur,
+            bureauSortie: (ordreMission as any).bureauSortie,
             chefBureau: (ordreMission as any).chefBureau || null,
             chefSection: (ordreMission as any).chefSection || null,
-            declarations: ordreMission.declarations.map((omd) => ({
+            declarations: (ordreMission as any).declarations.map((omd: any) => ({
                 id: omd.declaration.id,
                 numeroDeclaration: omd.declaration.numeroDeclaration,
                 dateDeclaration: omd.declaration.dateDeclaration,
@@ -609,7 +627,6 @@ export class OrdreMissionService {
                     ? {
                         id: omd.declaration.regime.id,
                         name: omd.declaration.regime.name,
-                        
                     }
                     : null,
                 maisonTransit: omd.declaration.maisonTransit
@@ -641,8 +658,8 @@ export class OrdreMissionService {
                 },
                 // Inclure uniquement les colis de cet ordre pour cette déclaration
                 colis: ((ordreMission as any).colis || [])
-                    .filter((c) => c.declarationId === omd.declaration.id)
-                    .map((c) => ({
+                    .filter((c: any) => c.declarationId === omd.declaration.id)
+                    .map((c: any) => ({
                         id: c.id,
                         natureMarchandise: c.natureMarchandise,
                         positionTarifaire: c.positionTarifaire,
@@ -653,7 +670,7 @@ export class OrdreMissionService {
                             : null,
                     })),
             })),
-            conteneurs: ordreMission.conteneurs.map((c) => ({
+            conteneurs: (ordreMission as any).conteneurs.map((c: any) => ({
                 id: c.conteneur.id,
                 numConteneur: c.conteneur.numConteneur,
                 numPlomb: c.numPlomb,
@@ -661,7 +678,7 @@ export class OrdreMissionService {
                 driverNationality: c.driverNationality,
                 phone: c.phone,
             })),
-            camions: ordreMission.camions.map((c) => ({
+            camions: (ordreMission as any).camions.map((c: any) => ({
                 id: c.camion.id,
                 immatriculation: c.camion.immatriculation,
                 driverName: c.driverName,
@@ -700,8 +717,35 @@ export class OrdreMissionService {
     async update(
         id: number,
         updateOrdreMissionDto: UpdateOrdreMissionDto,
+        currentUser: { id: number; role: string },
     ): Promise<OrdreMissionResponseDto> {
-        await this.findOne(id);
+        const ordreMissionCheck = await (this.prisma.ordreMission as any).findUnique({
+            where: { id },
+            include: {
+                modificationRequests: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                },
+            },
+        });
+
+        if (!ordreMissionCheck) {
+            throw new NotFoundException(`Ordre de mission avec l'ID ${id} non trouvé`);
+        }
+
+        // Sécurité pour les transitaires : modification autorisée uniquement si une demande est APPROUVÉE
+        if (currentUser.role === 'TRANSITAIRE' || currentUser.role === 'DECLARANT') {
+            const latestRequest = ordreMissionCheck.modificationRequests[0];
+            const isApproved = latestRequest && latestRequest.status === ModificationRequestStatus.APPROVED;
+
+            // On autorise la modif sans demande SI le statut est EN_COURS (pas encore validé par la douane)
+            // Mais si le statut est au delà de EN_COURS, il faut une approbation.
+            if (ordreMissionCheck.statut !== 'EN_COURS' && !isApproved) {
+                throw new ForbiddenException(
+                    "Vous ne pouvez pas modifier cet ordre de mission. Veuillez soumettre une demande de rectification.",
+                );
+            }
+        }
 
         if (updateOrdreMissionDto.number) {
             const existing = await this.prisma.ordreMission.findFirst({
