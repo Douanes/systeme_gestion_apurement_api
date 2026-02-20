@@ -41,6 +41,13 @@ export enum ModificationRequestStatus {
     COMPLETED = 'COMPLETED',
 }
 
+export enum ModificationRequestType {
+    CHANGEMENT_CAMION = 'CHANGEMENT_CAMION',
+    CHANGEMENT_ITINERAIRE = 'CHANGEMENT_ITINERAIRE',
+    RECTIFICATION_POIDS_COLIS = 'RECTIFICATION_POIDS_COLIS',
+    ANNULATION = 'ANNULATION',
+}
+
 // Nested DTOs - CREATE new entities
 export class CreateNestedDeclarationDto {
     @ApiProperty({
@@ -533,6 +540,15 @@ export class CreateModificationRequestDto {
     @IsString()
     @IsNotEmpty()
     reason: string;
+
+    @ApiProperty({
+        description: 'Type de demande de modification',
+        example: ModificationRequestType.RECTIFICATION_POIDS_COLIS,
+        enum: ModificationRequestType,
+    })
+    @IsEnum(ModificationRequestType)
+    @IsNotEmpty()
+    type: ModificationRequestType;
 }
 
 export class ReviewModificationRequestDto {
@@ -575,6 +591,9 @@ export class ModificationRequestResponseDto {
 
     @ApiProperty({ enum: ModificationRequestStatus, example: ModificationRequestStatus.PENDING })
     status: ModificationRequestStatus;
+
+    @ApiProperty({ enum: ModificationRequestType, example: ModificationRequestType.RECTIFICATION_POIDS_COLIS })
+    type: ModificationRequestType;
 
     @ApiProperty({ example: '2024-01-15T10:30:00.000Z' })
     createdAt: Date;
@@ -715,6 +734,20 @@ export class OrdreMissionResponseDto {
         nullable: true,
     })
     chefSectionId?: number | null;
+    
+    @ApiPropertyOptional({
+        description: 'ID du chef d\'escouade (snapshot au moment de la création)',
+        example: 6,
+        nullable: true,
+    })
+    chefEscouadeId?: number | null;
+
+    @ApiPropertyOptional({
+        description: 'ID de l\'adjoint d\'escouade (snapshot au moment de la création)',
+        example: 7,
+        nullable: true,
+    })
+    adjointEscouadeId?: number | null;
 
     @ApiProperty({
         description: 'Date de création',
@@ -875,6 +908,18 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
         nullable: true,
     })
     chefSection?: any;
+
+    @ApiPropertyOptional({
+        description: 'Chef d\'escouade (snapshot au moment de la création)',
+        nullable: true,
+    })
+    chefEscouade?: any;
+
+    @ApiPropertyOptional({
+        description: 'Adjoint d\'escouade (snapshot au moment de la création)',
+        nullable: true,
+    })
+    adjointEscouade?: any;
 
     @ApiPropertyOptional({
         description: 'Escouade',

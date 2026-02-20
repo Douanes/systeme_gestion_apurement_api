@@ -54,6 +54,7 @@ export class ModificationRequestService {
                 ordreMissionId,
                 requesterId: currentUser.id,
                 reason: dto.reason,
+                type: dto.type as any,
                 status: ModificationRequestStatus.PENDING,
             },
             include: {
@@ -158,6 +159,7 @@ export class ModificationRequestService {
             reason: request.reason,
             rejectionReason: request.rejectionReason,
             status: request.status as ModificationRequestStatus,
+            type: request.type as any,
             createdAt: request.createdAt,
             updatedAt: request.updatedAt,
             reviewedAt: request.reviewedAt,

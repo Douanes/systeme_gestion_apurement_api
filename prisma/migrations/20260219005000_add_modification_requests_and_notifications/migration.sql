@@ -1,6 +1,5 @@
 -- Enums already exist in DB (partial execution from first failed attempt)
 CREATE TYPE "ModificationRequestStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED', 'COMPLETED');
-CREATE TYPE "TypeNotification" AS ENUM ('INFO', 'SUCCESS', 'WARNING', 'ERROR');
 
 -- CreateTable
 CREATE TABLE "ordre_mission_modification_requests" (

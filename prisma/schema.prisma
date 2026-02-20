@@ -61,6 +61,13 @@ enum ModificationRequestStatus {
   COMPLETED
 }
 
+enum ModificationRequestType {
+  CHANGEMENT_CAMION
+  CHANGEMENT_ITINERAIRE
+  RECTIFICATION_POIDS_COLIS
+  ANNULATION
+}
+
 enum DocumentType {
   REGISTRE_COMMERCE
   NINEA
@@ -172,8 +179,10 @@ model Agent {
   systemParametersAsChefSection SystemParameter[] @relation("ChefSection")
 
   // Relations ordres de mission en tant que chef bureau/section
-  ordreMissionsAsChefBureau  OrdreMission[] @relation("OrdreMissionChefBureau")
-  ordreMissionsAsChefSection OrdreMission[] @relation("OrdreMissionChefSection")
+  ordreMissionsAsChefBureau      OrdreMission[] @relation("OrdreMissionChefBureau")
+  ordreMissionsAsChefSection     OrdreMission[] @relation("OrdreMissionChefSection")
+  ordreMissionsAsChefEscouade    OrdreMission[] @relation("OrdreMissionChefEscouade")
+  ordreMissionsAsAdjointEscouade OrdreMission[] @relation("OrdreMissionAdjointEscouade")
 
   @@map("agents")
 }
@@ -246,9 +255,11 @@ model OrdreMission {
   ecouadeId        Int?               @map("escouade_id")
   agentEscorteurId Int?               @map("agent_escorteur_id")
   bureauSortieId   Int?               @map("bureau_sortie_id")
-  chefBureauId     Int?               @map("chef_bureau_id")
-  chefSectionId    Int?               @map("chef_section_id")
-  observations     String?            @db.Text
+  chefBureauId       Int?               @map("chef_bureau_id")
+  chefSectionId      Int?               @map("chef_section_id")
+  chefEscouadeId     Int?               @map("chef_escouade_id")
+  adjointEscouadeId  Int?               @map("adjoint_escouade_id")
+  observations       String?            @db.Text
   createdAt        DateTime           @default(now()) @map("created_at")
   updatedAt        DateTime           @updatedAt @map("updated_at")
   deletedAt        DateTime?          @map("deleted_at")
@@ -261,6 +272,8 @@ model OrdreMission {
   ecouade        Escouade?                 @relation(fields: [ecouadeId], references: [id], onDelete: SetNull)
   chefBureau     Agent?                    @relation("OrdreMissionChefBureau", fields: [chefBureauId], references: [id], onDelete: SetNull)
   chefSection    Agent?                    @relation("OrdreMissionChefSection", fields: [chefSectionId], references: [id], onDelete: SetNull)
+  chefEscouade   Agent?                    @relation("OrdreMissionChefEscouade", fields: [chefEscouadeId], references: [id], onDelete: SetNull)
+  adjointEscouade Agent?                   @relation("OrdreMissionAdjointEscouade", fields: [adjointEscouadeId], references: [id], onDelete: SetNull)
   declarations   OrdreMissionDeclaration[]
   conteneurs     OrdreMissionConteneur[]
   camions        OrdreMissionCamion[]
@@ -710,6 +723,7 @@ model OrdreMissionModificationRequest {
   reason          String                    @db.Text
   rejectionReason String?                   @map("rejection_reason") @db.Text
   status          ModificationRequestStatus @default(PENDING)
+  type            ModificationRequestType?   
   createdAt       DateTime                  @default(now()) @map("created_at")
   updatedAt       DateTime                  @updatedAt @map("updated_at")
   reviewedAt      DateTime?                 @map("reviewed_at")

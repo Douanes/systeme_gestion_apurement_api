@@ -43,7 +43,7 @@ CREATE INDEX "ordre_mission_documents_maison_transit_id_idx" ON "ordre_mission_d
 
 -- AddForeignKey
 ALTER TABLE "ordre_mission_documents" ADD CONSTRAINT "ordre_mission_documents_ordre_mission_id_fkey" FOREIGN KEY ("ordre_mission_id") REFERENCES "ordres_missions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "ordre_mission_documents" ADD CONSTRAINT "ordre_mission_documents_maison_transit_id_fkey" FOREIGN KEY ("maison_transit_id") REFERENCES "maisons_transit"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "ordre_mission_documents" ADD CONSTRAINT "ordre_mission_documents_maison_transit_id_fkey" FOREIGN KEY ("maison_transit_id") REFERENCES "maisons_transits"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "ordre_mission_documents" ADD CONSTRAINT "ordre_mission_documents_uploaded_by_fkey" FOREIGN KEY ("uploaded_by") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey

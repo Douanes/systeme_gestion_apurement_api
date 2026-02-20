@@ -24,12 +24,14 @@ import {
 } from 'libs/dto/ordre-mission/mission.dto';
 import { OrdreMissionPaginationQueryDto, AuditNonApuresQueryDto } from 'libs/dto/ordre-mission/pagination.dto';
 import { PaginatedResponseDto } from 'libs/dto/global/response.dto';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class OrdreMissionService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly cloudinaryService: CloudinaryService,
+        private readonly notificationService: NotificationService,
     ) { }
 
     /**
@@ -101,8 +103,10 @@ export class OrdreMissionService {
             agentEscorteurId: ordreMission.agentEscorteurId,
             bureauSortieId: ordreMission.bureauSortieId,
             observations: ordreMission.observations,
-            chefBureauId: ordreMission.chefBureauId,
-            chefSectionId: ordreMission.chefSectionId,
+            chefBureauId: (ordreMission as any).chefBureauId,
+            chefSectionId: (ordreMission as any).chefSectionId,
+            chefEscouadeId: (ordreMission as any).chefEscouadeId,
+            adjointEscouadeId: (ordreMission as any).adjointEscouadeId,
             createdAt: ordreMission.createdAt,
             updatedAt: ordreMission.updatedAt,
             agentEscorteur: (ordreMission as any).agentEscorteur || null,
@@ -160,9 +164,11 @@ export class OrdreMissionService {
                     agentEscorteurId: createOrdreMissionDto.agentEscorteurId,
                     chefBureauId: systemParam?.chefBureauId ?? null,
                     chefSectionId: systemParam?.chefSectionId ?? null,
+                    chefEscouadeId: (createOrdreMissionDto as any).chefEscouadeId ?? null,
+                    adjointEscouadeId: (createOrdreMissionDto as any).adjointEscouadeId ?? null,
                     bureauSortieId: createOrdreMissionDto.bureauSortieId,
                     observations: createOrdreMissionDto.observations,
-                },
+                } as any,
             });
 
             // 2. Calculer les totaux de parcelle à partir des colis
@@ -354,6 +360,53 @@ export class OrdreMissionService {
             return ordre;
         });
 
+        // 8. Snapshot du chef d'escouade et notifications (Après création de l'ordre)
+        if (ordreMission.ecouadeId) {
+            const escouade = await this.prisma.escouade.findUnique({
+                where: { id: ordreMission.ecouadeId },
+                include: {
+                    chef: { select: { id: true, userId: true, firstname: true, lastname: true } },
+                    adjoint: { select: { id: true, userId: true, firstname: true, lastname: true } },
+                }
+            });
+
+            if (escouade) {
+                // Update snapshot values on the order
+                await this.prisma.ordreMission.update({
+                    where: { id: ordreMission.id },
+                    data: {
+                        chefEscouadeId: escouade.chefId,
+                        adjointEscouadeId: escouade.adjointId,
+                    } as any
+                });
+
+                // Update the local object for the final response
+                (ordreMission as any).chefEscouadeId = escouade.chefId;
+                (ordreMission as any).adjointEscouadeId = escouade.adjointId;
+
+                // Envoyer des notifications
+                if (escouade.chef?.userId) {
+                    await this.notificationService.createNotification({
+                        userId: escouade.chef.userId,
+                        title: 'Nouvel ordre de mission',
+                        message: `L'ordre de mission n° ${ordreMission.number} a été créé pour votre escouade.`,
+                        type: 'INFO',
+                        relatedId: ordreMission.id,
+                    });
+                }
+
+                if (escouade.adjoint?.userId) {
+                    await this.notificationService.createNotification({
+                        userId: escouade.adjoint.userId,
+                        title: 'Nouvel ordre de mission',
+                        message: `L'ordre de mission n° ${ordreMission.number} a été créé pour votre escouade.`,
+                        type: 'INFO',
+                        relatedId: ordreMission.id,
+                    });
+                }
+            }
+        }
+
         return this.toResponseDto(ordreMission);
     }
 
@@ -541,6 +594,8 @@ export class OrdreMissionService {
                 bureauSortie: true,
                 chefBureau: true,
                 chefSection: true,
+                chefEscouade: true,
+                adjointEscouade: true,
                 declarations: {
                     where: { deletedAt: null },
                     include: {
@@ -609,6 +664,8 @@ export class OrdreMissionService {
             bureauSortie: (ordreMission as any).bureauSortie,
             chefBureau: (ordreMission as any).chefBureau || null,
             chefSection: (ordreMission as any).chefSection || null,
+            chefEscouade: (ordreMission as any).chefEscouade || null,
+            adjointEscouade: (ordreMission as any).adjointEscouade || null,
             declarations: (ordreMission as any).declarations.map((omd: any) => ({
                 id: omd.declaration.id,
                 numeroDeclaration: omd.declaration.numeroDeclaration,
@@ -1149,9 +1206,23 @@ export class OrdreMissionService {
                 agentEscorteurId: agentId,
                 statut: PrismaStatutOrdreMission.COTATION,
             },
+            include: {
+                agentEscorteur: { select: { userId: true } }
+            }
         });
 
-        return this.toResponseDto(updated);
+        // Envoyer une notification à l'agent assigné
+        if (updated.agentEscorteur?.userId) {
+            await this.notificationService.createNotification({
+                userId: updated.agentEscorteur.userId,
+                title: 'Assignation d\'un ordre de mission',
+                message: `Vous avez été assigné à l'ordre de mission n° ${updated.number} en tant qu'escorteur.`,
+                type: 'INFO',
+                relatedId: updated.id,
+            });
+        }
+
+        return this.toResponseDto(updated as any);
     }
 
     /**
