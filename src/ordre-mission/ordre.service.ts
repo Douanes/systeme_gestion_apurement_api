@@ -894,15 +894,6 @@ export class OrdreMissionService {
                     },
                 });
 
-                // Soft delete tous les anciens colis de cet ordre de mission
-                await tx.colis.updateMany({
-                    where: {
-                        ordreMissionId: id,
-                        deletedAt: null,
-                    },
-                    data: { deletedAt: new Date() },
-                });
-
                 // Créer les nouvelles parcelles
                 const declarationsCreees: Map<string, number> = new Map();
 
@@ -964,7 +955,12 @@ export class OrdreMissionService {
                     });
                 }
 
-                // Créer les nouveaux colis
+                // Soft delete tous les anciens colis et recréer avec les nouvelles valeurs
+                await tx.colis.updateMany({
+                    where: { ordreMissionId: id, deletedAt: null },
+                    data: { deletedAt: new Date() },
+                });
+
                 if (updateOrdreMissionDto.colis && updateOrdreMissionDto.colis.length > 0) {
                     for (const coli of updateOrdreMissionDto.colis) {
                         const declarationId = declarationsCreees.get(coli.numeroDeclaration);
@@ -987,6 +983,46 @@ export class OrdreMissionService {
                             },
                         });
                     }
+                }
+            } else if (updateOrdreMissionDto.colis !== undefined) {
+                // Mise à jour des colis uniquement (sans changement de déclarations)
+                // Récupérer les déclarations existantes liées à cet ordre pour retrouver les IDs
+                const existingParcelles = await tx.ordreMissionDeclaration.findMany({
+                    where: { ordreMissionId: id, deletedAt: null },
+                    include: { declaration: true },
+                });
+
+                const declarationIdByNumero: Map<string, number> = new Map(
+                    existingParcelles.map((p) => [p.declaration.numeroDeclaration, p.declaration.id]),
+                );
+
+                // Soft delete les anciens colis
+                await tx.colis.updateMany({
+                    where: { ordreMissionId: id, deletedAt: null },
+                    data: { deletedAt: new Date() },
+                });
+
+                // Créer les nouveaux colis avec les valeurs mises à jour
+                for (const coli of updateOrdreMissionDto.colis) {
+                    const declarationId = declarationIdByNumero.get(coli.numeroDeclaration);
+
+                    if (!declarationId) {
+                        throw new NotFoundException(
+                            `Déclaration ${coli.numeroDeclaration} non trouvée pour cet ordre de mission.`,
+                        );
+                    }
+
+                    await tx.colis.create({
+                        data: {
+                            declarationId: declarationId,
+                            ordreMissionId: id,
+                            natureMarchandise: coli.natureMarchandise,
+                            positionTarifaire: coli.positionTarifaire,
+                            nbreColis: coli.nbreColis,
+                            poids: coli.poids,
+                            valeurDeclaree: coli.valeurDeclaree,
+                        },
+                    });
                 }
             }
 
