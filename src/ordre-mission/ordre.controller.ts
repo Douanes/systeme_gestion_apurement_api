@@ -111,6 +111,13 @@ export class OrdreMissionController {
                         chefEscouadeId: 6,
                         adjointEscouadeId: 7,
                         observations: 'Mission prioritaire',
+                        latestModificationRequest: {
+                            id: 1,
+                            reason: 'Erreur de saisie',
+                            status: 'APPROVED',
+                            type: 'RECTIFICATION_POIDS_COLIS',
+                            createdAt: '2024-01-15T11:00:00.000Z'
+                        },
                         createdAt: '2024-01-15T10:30:00.000Z',
                         updatedAt: '2024-01-15T10:30:00.000Z',
                     },
@@ -191,6 +198,13 @@ export class OrdreMissionController {
                         },
                         createdAt: '2024-01-15T10:30:00.000Z',
                         updatedAt: '2024-01-15T10:30:00.000Z',
+                        latestModificationRequest: {
+                            id: 1,
+                            reason: 'Erreur de saisie',
+                            status: 'APPROVED',
+                            type: 'RECTIFICATION_POIDS_COLIS',
+                            createdAt: '2024-01-15T11:00:00.000Z'
+                        },
                     },
                 ],
                 meta: {

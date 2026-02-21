@@ -137,19 +137,20 @@ export class ModificationRequestService {
     }
 
     /**
-     * Récupérer toutes les demandes approuvées (APPROVED)
-     * Utilisé pour la liste globale des rectifications à appliquer
+     * Récupérer toutes les demandes de rectification avec filtres
      */
-    async findAllApproved(
+    async findAll(
         query: ModificationRequestQueryDto,
         currentUser: { role: string; maisonTransitIds?: number[] },
     ): Promise<PaginatedResponseDto<ModificationRequestResponseDto>> {
-        const { page = 1, limit = 10, search, maisonTransitId } = query;
+        const { page = 1, limit = 10, search, maisonTransitId, status } = query;
         const skip = (page - 1) * limit;
 
-        const where: any = {
-            status: ModificationRequestStatus.APPROVED,
-        };
+        const where: any = {};
+
+        if (status) {
+            where.status = status;
+        }
 
         // Filtrer par maison de transit si transitaire
         if (currentUser.role === UserRole.TRANSITAIRE || currentUser.role === UserRole.DECLARANT) {

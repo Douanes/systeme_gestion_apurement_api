@@ -1,8 +1,18 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Min, Max } from 'class-validator';
+import { IsInt, IsOptional, IsString, Min, Max, IsEnum } from 'class-validator';
+import { ModificationRequestStatus } from './mission.dto';
 
 export class ModificationRequestQueryDto {
+    @ApiPropertyOptional({
+        description: 'Filtrer par statut',
+        enum: ModificationRequestStatus,
+        example: ModificationRequestStatus.APPROVED,
+    })
+    @IsOptional()
+    @IsEnum(ModificationRequestStatus)
+    status?: ModificationRequestStatus;
+
     @ApiPropertyOptional({
         description: 'Numéro de la page (commence à 1)',
         example: 1,

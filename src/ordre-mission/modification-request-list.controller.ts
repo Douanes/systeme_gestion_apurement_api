@@ -18,18 +18,18 @@ export class ModificationRequestListController {
     constructor(private readonly modificationRequestService: ModificationRequestService) {}
 
     @UseGuards(JwtAuthGuard)
-    @Get('approved')
-    @ApiOperation({ summary: 'Lister toutes les demandes de rectification approuvées' })
+    @Get()
+    @ApiOperation({ summary: 'Lister toutes les demandes de rectification avec filtres' })
     @ApiResponse({ 
         status: 200, 
-        description: 'Liste des demandes approuvées récupérée avec succès',
+        description: 'Liste des demandes récupérée avec succès',
         type: ModificationRequestResponseDto,
         isArray: true 
     })
-    async findAllApproved(
+    async findAll(
         @Query() query: ModificationRequestQueryDto,
         @Req() req,
     ) {
-        return this.modificationRequestService.findAllApproved(query, req.user);
+        return this.modificationRequestService.findAll(query, req.user);
     }
 }
