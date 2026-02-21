@@ -992,15 +992,9 @@ export class OrdreMissionService {
 
             // 4. Si des conteneurs sont fournis, utiliser les tables de liaison
             if (updateOrdreMissionDto.conteneurs !== undefined) {
-                // D'abord, soft delete toutes les anciennes liaisons conteneurs
-                await tx.ordreMissionConteneur.updateMany({
-                    where: {
-                        ordreMissionId: id,
-                        deletedAt: null,
-                    },
-                    data: {
-                        deletedAt: new Date(),
-                    },
+                // Supprimer toutes les anciennes liaisons conteneurs (hard delete pour éviter les conflits d'unicité)
+                await tx.ordreMissionConteneur.deleteMany({
+                    where: { ordreMissionId: id },
                 });
 
                 // Ensuite, créer les nouvelles liaisons
@@ -1035,15 +1029,9 @@ export class OrdreMissionService {
 
             // 5. Si des camions sont fournis, utiliser les tables de liaison
             if (updateOrdreMissionDto.camions !== undefined) {
-                // D'abord, soft delete toutes les anciennes liaisons camions
-                await tx.ordreMissionCamion.updateMany({
-                    where: {
-                        ordreMissionId: id,
-                        deletedAt: null,
-                    },
-                    data: {
-                        deletedAt: new Date(),
-                    },
+                // Supprimer toutes les anciennes liaisons camions (hard delete pour éviter les conflits d'unicité)
+                await tx.ordreMissionCamion.deleteMany({
+                    where: { ordreMissionId: id },
                 });
 
                 // Ensuite, créer les nouvelles liaisons
@@ -1077,15 +1065,9 @@ export class OrdreMissionService {
 
             // 6. Si des voitures sont fournies, utiliser les tables de liaison
             if (updateOrdreMissionDto.voitures !== undefined) {
-                // D'abord, soft delete toutes les anciennes liaisons voitures
-                await tx.ordreMissionVoiture.updateMany({
-                    where: {
-                        ordreMissionId: id,
-                        deletedAt: null,
-                    },
-                    data: {
-                        deletedAt: new Date(),
-                    },
+                // Supprimer toutes les anciennes liaisons voitures (hard delete pour éviter les conflits d'unicité)
+                await tx.ordreMissionVoiture.deleteMany({
+                    where: { ordreMissionId: id },
                 });
 
                 // Ensuite, créer les nouvelles liaisons
