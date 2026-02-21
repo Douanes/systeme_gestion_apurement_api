@@ -1120,7 +1120,20 @@ export class OrdreMissionService {
             return ordre;
         });
 
-        return this.toResponseDto(ordreMission);
+        const responseDto = this.toResponseDto(ordreMission);
+
+        // Si la mise à jour est faite par un transitaire/déclarant, on marque la demande comme COMPLETED
+        if (currentUser.role === 'TRANSITAIRE' || currentUser.role === 'DECLARANT') {
+            const latestRequest = (ordreMissionCheck as any).modificationRequests[0];
+            if (latestRequest && latestRequest.status === ModificationRequestStatus.APPROVED) {
+                await (this.prisma as any).ordreMissionModificationRequest.update({
+                    where: { id: latestRequest.id },
+                    data: { status: ModificationRequestStatus.COMPLETED },
+                });
+            }
+        }
+
+        return responseDto;
     }
 
     /**

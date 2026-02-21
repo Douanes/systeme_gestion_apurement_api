@@ -12,7 +12,9 @@ import {
     ModificationRequestResponseDto,
     ModificationRequestStatus,
 } from 'libs/dto/ordre-mission/mission.dto';
+import { ModificationRequestQueryDto } from 'libs/dto/ordre-mission/modification-request-query.dto';
 import { UserRole } from 'libs/dto/auth';
+import { PaginatedResponseDto } from 'libs/dto/global/response.dto';
 
 @Injectable()
 export class ModificationRequestService {
@@ -132,6 +134,68 @@ export class ModificationRequestService {
         });
 
         return this.toResponseDto(updatedRequest);
+    }
+
+    /**
+     * Récupérer toutes les demandes approuvées (APPROVED)
+     * Utilisé pour la liste globale des rectifications à appliquer
+     */
+    async findAllApproved(
+        query: ModificationRequestQueryDto,
+        currentUser: { role: string; maisonTransitIds?: number[] },
+    ): Promise<PaginatedResponseDto<ModificationRequestResponseDto>> {
+        const { page = 1, limit = 10, search, maisonTransitId } = query;
+        const skip = (page - 1) * limit;
+
+        const where: any = {
+            status: ModificationRequestStatus.APPROVED,
+        };
+
+        // Filtrer par maison de transit si transitaire
+        if (currentUser.role === UserRole.TRANSITAIRE || currentUser.role === UserRole.DECLARANT) {
+            where.ordreMission = {
+                maisonTransitId: { in: currentUser.maisonTransitIds },
+            };
+        } else if (maisonTransitId) {
+            // Un admin ou agent peut filtrer par maison de transit
+            where.ordreMission = {
+                maisonTransitId,
+            };
+        }
+
+        if (search) {
+            where.ordreMission = {
+                ...where.ordreMission,
+                number: { contains: search, mode: 'insensitive' },
+            };
+        }
+
+        const [requests, total] = await Promise.all([
+            (this.prisma as any).ordreMissionModificationRequest.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    requester: { select: { id: true, firstname: true, lastname: true } },
+                    reviewer: { select: { id: true, firstname: true, lastname: true } },
+                    ordreMission: true,
+                },
+            }),
+            (this.prisma as any).ordreMissionModificationRequest.count({ where }),
+        ]);
+
+        return {
+            data: requests.map((req) => this.toResponseDto(req)),
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+                hasNext: page < Math.ceil(total / limit),
+                hasPrevious: page > 1,
+            },
+        };
     }
 
     /**
