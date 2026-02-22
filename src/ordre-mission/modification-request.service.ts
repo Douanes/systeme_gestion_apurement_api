@@ -143,13 +143,17 @@ export class ModificationRequestService {
         query: ModificationRequestQueryDto,
         currentUser: { role: string; maisonTransitIds?: number[] },
     ): Promise<PaginatedResponseDto<ModificationRequestResponseDto>> {
-        const { page = 1, limit = 10, search, maisonTransitId, status } = query;
+        const { page = 1, limit = 10, search, maisonTransitId, status, ordreMissionId } = query;
         const skip = (page - 1) * limit;
 
         const where: any = {};
 
         if (status) {
             where.status = status;
+        }
+
+        if (ordreMissionId) {
+            where.ordreMissionId = ordreMissionId;
         }
 
         // Filtrer par maison de transit si transitaire

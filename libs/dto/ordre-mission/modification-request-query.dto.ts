@@ -55,4 +55,13 @@ export class ModificationRequestQueryDto {
     @Type(() => Number)
     @IsInt()
     maisonTransitId?: number;
+
+    @ApiPropertyOptional({
+        description: 'ID de l\'ordre de mission',
+        example: 1,
+    })
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    ordreMissionId?: number;
 }
