@@ -748,23 +748,56 @@ export class OrdreMissionResponseDto {
     observations?: string | null;
 
     @ApiPropertyOptional({
-        description: 'Conteneurs',
+        description: 'Camions liés à l\'ordre de mission',
         type: 'array',
-        example: [],
-    })
-    conteneurs?: any[];
-
-    @ApiPropertyOptional({
-        description: 'Camions',
-        type: 'array',
-        example: [],
+        example: [
+            {
+                id: 1,
+                immatriculation: 'DK-1234-AB',
+                driverName: 'Moussa Diop',
+                driverNationality: 'Sénégalaise',
+                phone: '+221772345678',
+            }
+        ],
     })
     camions?: any[];
 
     @ApiPropertyOptional({
-        description: 'Voitures',
+        description: 'Conteneurs liés à l\'ordre de mission',
         type: 'array',
-        example: [],
+        example: [
+            {
+                id: 1,
+                numConteneur: 'MSCU1234567',
+                numPlomb: 'PLB-2024-001',
+                typeConteneur: '40pieds',
+                driverName: null,
+                phone: null,
+                ordreMissionCamionId: 1,
+            }
+        ],
+    })
+    conteneurs?: any[];
+
+    @ApiPropertyOptional({
+        description: 'Voitures / châssis liés à l\'ordre de mission',
+        type: 'array',
+        example: [
+            {
+                id: 1,
+                chassis: 'VF1KZ0G0H12345678',
+                driverName: 'Fatou Sow',
+                driverNationality: 'Sénégalaise',
+                phone: '+221773456789',
+                ordreMissionCamionId: 1,
+            },
+            {
+                id: 2,
+                chassis: 'VF2AB0C0D98765432',
+                driverName: 'Abdou Ndiaye',
+                ordreMissionCamionId: null,
+            }
+        ],
     })
     voitures?: any[];
 
@@ -1002,6 +1035,7 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
                 parcelle: {
                     nbreColisParcelle: 100,
                     poidsParcelle: 100.00,
+                    numeroParcelle: 1,
                 },
                 colis: [
                     {

@@ -83,7 +83,8 @@ export class OrdreMissionController {
     @ApiOperation({
         summary: 'Récupérer tous les ordres de mission',
         description:
-            'Récupère une liste paginée de tous les ordres de mission avec filtres',
+            'Récupère une liste paginée de tous les ordres de mission. Filtres disponibles : statut, agent escorteur, ' +
+            'escouade (escouadeId), chef d\'escouade (chefEscouadeId), période, et recherche textuelle.',
     })
     @ApiQuery({ type: OrdreMissionPaginationQueryDto })
     @ApiResponse({
@@ -115,46 +116,46 @@ export class OrdreMissionController {
                             id: 1,
                             reason: 'Erreur de saisie',
                             status: 'APPROVED',
-                            type: 'RECTIFICATION_POIDS_COLIS',
+                            type: 'RECTIFICATION_POIDS',
                             createdAt: '2024-01-15T11:00:00.000Z'
                         },
+                        camions: [
+                            {
+                                id: 1,
+                                immatriculation: 'DK-1234-AB',
+                                driverName: 'Moussa Diop',
+                                driverNationality: 'Sénégalaise',
+                                phone: '+221772345678',
+                            }
+                        ],
                         conteneurs: [
                             {
                                 id: 1,
                                 numConteneur: 'MSCU1234567',
                                 numPlomb: 'PLB-2024-001',
                                 typeConteneur: '40pieds',
-                                ordreMissionCamionId: 1
+                                driverName: null,
+                                phone: null,
+                                ordreMissionCamionId: 1,
                             }
                         ],
-                        camions: [
+                        voitures: [
                             {
                                 id: 1,
-                                immatriculation: 'DK-1234-AB',
-                                driverName: 'Moussa Diop'
+                                chassis: 'VF1KZ0G0H12345678',
+                                driverName: 'Fatou Sow',
+                                driverNationality: 'Sénégalaise',
+                                ordreMissionCamionId: 1,
+                            },
+                            {
+                                id: 2,
+                                chassis: 'VF2AB0C0D98765432',
+                                driverName: 'Abdou Ndiaye',
+                                ordreMissionCamionId: null,
                             }
                         ],
-                        voitures: [],
                         createdAt: '2024-01-15T10:30:00.000Z',
                         updatedAt: '2024-01-15T10:30:00.000Z',
-                    },
-                    {
-                        id: 2,
-                        number: 'OM-2025-000001',
-                        destination: 'Aéroport Blaise Diagne',
-                        itineraire: 'Dakar -> AIBD',
-                        dateOrdre: '2024-01-22T00:00:00.000Z',
-                        depositaireId: 2,
-                        maisonTransitId: null,
-                        createdById: 1,
-                        statut: 'EN_COURS',
-                        statutApurement: 'NON_APURE',
-                        escouadeId: null,
-                        agentEscorteurId: 2,
-                        bureauSortieId: 1,
-                        observations: null,
-                        createdAt: '2024-01-20T10:30:00.000Z',
-                        updatedAt: '2024-01-22T08:15:00.000Z',
                     },
                 ],
                 meta: {
@@ -219,9 +220,28 @@ export class OrdreMissionController {
                             id: 1,
                             reason: 'Erreur de saisie',
                             status: 'APPROVED',
-                            type: 'RECTIFICATION_POIDS_COLIS',
+                            type: 'RECTIFICATION_POIDS',
                             createdAt: '2024-01-15T11:00:00.000Z'
                         },
+                        camions: [
+                            {
+                                id: 1,
+                                immatriculation: 'DK-6816-AB',
+                                driverName: 'Moussa Diop',
+                                driverNationality: 'Sénégalaise',
+                                phone: '+221772345678',
+                            }
+                        ],
+                        conteneurs: [
+                            {
+                                id: 1,
+                                numConteneur: 'MSCU1234567',
+                                numPlomb: 'PLB-2024-001',
+                                typeConteneur: '20pieds',
+                                ordreMissionCamionId: 1,
+                            }
+                        ],
+                        voitures: [],
                     },
                 ],
                 meta: {

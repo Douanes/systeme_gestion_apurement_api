@@ -521,7 +521,7 @@ export class OrdreMissionService {
                         where: { deletedAt: null },
                         include: {
                             conteneur: true,
-                            camion: true, // Include carrier truck for containers
+                            ordreMissionCamion: { include: { camion: true } },
                         }
                     },
                     camions: {
@@ -534,7 +534,7 @@ export class OrdreMissionService {
                         where: { deletedAt: null },
                         include: {
                             voiture: true,
-                            camion: true, // Include carrier truck for cars
+                            ordreMissionCamion: { include: { camion: true } },
                         }
                     },
                     agentEscorteur: true,
