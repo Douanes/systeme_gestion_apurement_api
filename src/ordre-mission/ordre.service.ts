@@ -112,6 +112,31 @@ export class OrdreMissionService {
             agentEscorteur: (ordreMission as any).agentEscorteur || null,
             documentCount: (ordreMission as any)._count?.documents ?? 0,
             latestModificationRequest: (ordreMission as any).modificationRequests?.[0] || null,
+            conteneurs: (ordreMission as any).conteneurs?.map(c => ({
+                id: c.id,
+                numConteneur: c.conteneur?.numConteneur,
+                numPlomb: c.numPlomb,
+                typeConteneur: c.typeConteneur,
+                driverName: c.driverName,
+                driverNationality: c.driverNationality,
+                phone: c.phone,
+                ordreMissionCamionId: c.ordreMissionCamionId,
+            })) || [],
+            camions: (ordreMission as any).camions?.map(c => ({
+                id: c.id,
+                immatriculation: c.camion?.immatriculation,
+                driverName: c.driverName,
+                driverNationality: c.driverNationality,
+                phone: c.phone,
+            })) || [],
+            voitures: (ordreMission as any).voitures?.map(v => ({
+                id: v.id,
+                chassis: v.voiture?.chassis,
+                driverName: v.driverName,
+                driverNationality: v.driverNationality,
+                phone: v.phone,
+                ordreMissionCamionId: v.ordreMissionCamionId,
+            })) || [],
         };
     }
 
@@ -236,12 +261,18 @@ export class OrdreMissionService {
                     declarationsCreees.set(decl.numeroDeclaration, declaration.id);
 
                     // Créer la parcelle (lien entre ordre et déclaration)
+                    // Calculer le prochain numéro de parcelle
+                    const existingParcellesCount = await tx.ordreMissionDeclaration.count({
+                        where: { declarationId: declaration.id, deletedAt: null },
+                    });
+
                     await tx.ordreMissionDeclaration.create({
                         data: {
                             ordreMissionId: ordre.id,
                             declarationId: declaration.id,
                             nbreColisParcelle: totauxParcelle.nbreColis,
                             poidsParcelle: totauxParcelle.poids,
+                            numeroParcelle: existingParcellesCount + 1,
                         },
                     });
                 }
@@ -272,87 +303,95 @@ export class OrdreMissionService {
                 }
             }
 
-            // 5. Créer les conteneurs et les liaisons
+            // 5. Collecter toutes les immatriculations de camions uniques
+            const truckImmatriculations: Set<string> = new Set();
+            if (createOrdreMissionDto.camions?.length) {
+                createOrdreMissionDto.camions.forEach((c) => truckImmatriculations.add(c.immatriculation));
+            }
+            if (createOrdreMissionDto.conteneurs?.length) {
+                createOrdreMissionDto.conteneurs.forEach((c) => {
+                    if (c.camionImmatriculation) truckImmatriculations.add(c.camionImmatriculation);
+                });
+            }
+            if (createOrdreMissionDto.voitures?.length) {
+                createOrdreMissionDto.voitures.forEach((v) => {
+                    if (v.camionImmatriculation) truckImmatriculations.add(v.camionImmatriculation);
+                });
+            }
+
+            // Map immatriculation -> OrdreMissionCamionId
+            const truckMap: Map<string, number> = new Map();
+
+            // 6. Créer les camions pour cette mission
+            for (const imm of Array.from(truckImmatriculations)) {
+                // S'assurer que le camion existe dans le référentiel global
+                const globalCamion = await tx.camion.upsert({
+                    where: { immatriculation: imm },
+                    update: { deletedAt: null, updatedAt: new Date() },
+                    create: { immatriculation: imm },
+                });
+
+                // Chercher les infos spécifiques fournies dans le payload (chauffeur, etc.)
+                const inputCamion = createOrdreMissionDto.camions?.find((c) => c.immatriculation === imm);
+
+                const omCamion = await tx.ordreMissionCamion.create({
+                    data: {
+                        ordreMissionId: ordre.id,
+                        camionId: globalCamion.id,
+                        driverName: inputCamion?.driverName,
+                        driverNationality: inputCamion?.driverNationality,
+                        phone: inputCamion?.phone,
+                    },
+                });
+                truckMap.set(imm, omCamion.id);
+            }
+
+            // 7. Créer les conteneurs et les lier aux camions si nécessaire
             if (createOrdreMissionDto.conteneurs?.length) {
                 for (const cont of createOrdreMissionDto.conteneurs) {
-                    // Créer ou récupérer le conteneur
-                    const conteneur = await tx.conteneur.upsert({
+                    const globalCont = await tx.conteneur.upsert({
                         where: { numConteneur: cont.numConteneur },
-                        update: {
-                            deletedAt: null,
-                            updatedAt: new Date(),
-                        },
-                        create: {
-                            numConteneur: cont.numConteneur,
-                        },
+                        update: { deletedAt: null, updatedAt: new Date() },
+                        create: { numConteneur: cont.numConteneur },
                     });
 
-                    // Créer la liaison avec les infos du voyage
+                    const omCamionId = cont.camionImmatriculation ? truckMap.get(cont.camionImmatriculation) : null;
+
                     await tx.ordreMissionConteneur.create({
                         data: {
                             ordreMissionId: ordre.id,
-                            conteneurId: conteneur.id,
+                            conteneurId: globalCont.id,
                             numPlomb: cont.numPlomb,
+                            typeConteneur: cont.typeConteneur,
                             driverName: cont.driverName,
                             driverNationality: cont.driverNationality,
                             phone: cont.phone,
-                        },
+                            ordreMissionCamionId: omCamionId,
+                        } as any,
                     });
                 }
             }
 
-            // 6. Créer les camions et les liaisons
-            if (createOrdreMissionDto.camions?.length) {
-                for (const cam of createOrdreMissionDto.camions) {
-                    // Créer ou récupérer le camion
-                    const camion = await tx.camion.upsert({
-                        where: { immatriculation: cam.immatriculation },
-                        update: {
-                            deletedAt: null,
-                            updatedAt: new Date(),
-                        },
-                        create: {
-                            immatriculation: cam.immatriculation,
-                        },
-                    });
-
-                    // Créer la liaison avec les infos du voyage
-                    await tx.ordreMissionCamion.create({
-                        data: {
-                            ordreMissionId: ordre.id,
-                            camionId: camion.id,
-                            driverName: cam.driverName,
-                            driverNationality: cam.driverNationality,
-                            phone: cam.phone,
-                        },
-                    });
-                }
-            }
-
-            // 7. Créer les voitures et les liaisons
+            // 8. Créer les voitures et les lier aux camions si nécessaire
             if (createOrdreMissionDto.voitures?.length) {
                 for (const voit of createOrdreMissionDto.voitures) {
-                    // Créer ou récupérer la voiture
-                    const voiture = await tx.voiture.upsert({
+                    const globalVoit = await tx.voiture.upsert({
                         where: { chassis: voit.chassis },
-                        update: {
-                            deletedAt: null,
-                            updatedAt: new Date(),
-                        },
-                        create: {
-                            chassis: voit.chassis,
-                        },
+                        update: { deletedAt: null, updatedAt: new Date() },
+                        create: { chassis: voit.chassis },
                     });
 
-                    // Créer la liaison avec les infos du voyage
+                    const omCamionId = voit.camionImmatriculation ? truckMap.get(voit.camionImmatriculation) : null;
+
                     await tx.ordreMissionVoiture.create({
                         data: {
                             ordreMissionId: ordre.id,
-                            voitureId: voiture.id,
+                            voitureId: globalVoit.id,
                             driverName: voit.driverName,
                             driverNationality: voit.driverNationality,
                             phone: voit.phone,
-                        },
+                            ordreMissionCamionId: omCamionId,
+                        } as any,
                     });
                 }
             }
@@ -424,6 +463,7 @@ export class OrdreMissionService {
             statut,
             agentId,
             escouadeId,
+            chefEscouadeId,
             dateDebutMin,
             dateDebutMax,
             sortBy = 'createdAt',
@@ -444,6 +484,8 @@ export class OrdreMissionService {
 
         if (statut) where.statut = statut;
         if (agentId) where.agentEscorteurId = agentId;
+        if (escouadeId) where.ecouadeId = escouadeId;
+        if (chefEscouadeId) where.chefEscouadeId = chefEscouadeId;
 
         if (dateDebutMin || dateDebutMax) {
             where.dateOrdre = {};
@@ -474,6 +516,26 @@ export class OrdreMissionService {
                     },
                     colis: {
                         where: { deletedAt: null },
+                    },
+                    conteneurs: {
+                        where: { deletedAt: null },
+                        include: {
+                            conteneur: true,
+                            camion: true, // Include carrier truck for containers
+                        }
+                    },
+                    camions: {
+                        where: { deletedAt: null },
+                        include: {
+                            camion: true,
+                        }
+                    },
+                    voitures: {
+                        where: { deletedAt: null },
+                        include: {
+                            voiture: true,
+                            camion: true, // Include carrier truck for cars
+                        }
                     },
                     agentEscorteur: true,
                     _count: {
@@ -614,7 +676,12 @@ export class OrdreMissionService {
                 },
                 conteneurs: {
                     where: { deletedAt: null },
-                    include: { conteneur: true },
+                    include: { 
+                        conteneur: true,
+                        ordreMissionCamion: {
+                            include: { camion: true }
+                        }
+                    },
                 },
                 camions: {
                     where: { deletedAt: null },
@@ -622,7 +689,12 @@ export class OrdreMissionService {
                 },
                 voitures: {
                     where: { deletedAt: null },
-                    include: { voiture: true },
+                    include: { 
+                        voiture: true,
+                        ordreMissionCamion: {
+                            include: { camion: true }
+                        }
+                    },
                 },
                 documents: {
                     where: { deletedAt: null },
@@ -712,6 +784,7 @@ export class OrdreMissionService {
                     poidsParcelle: omd.poidsParcelle
                         ? omd.poidsParcelle.toNumber()
                         : 0,
+                    numeroParcelle: omd.numeroParcelle,
                 },
                 // Inclure uniquement les colis de cet ordre pour cette déclaration
                 colis: ((ordreMission as any).colis || [])
@@ -1459,6 +1532,8 @@ export class OrdreMissionService {
             minDaysOld = 7,
             search,
             maisonTransitId,
+            escouadeId,
+            chefEscouadeId,
             sortBy = 'dateOrdre',
             sortOrder = 'asc',
         } = query;
@@ -1476,6 +1551,10 @@ export class OrdreMissionService {
                 lte: dateLimite,
             },
         };
+
+        if (maisonTransitId) where.maisonTransitId = maisonTransitId;
+        if (escouadeId) where.escouadeId = escouadeId;
+        if (chefEscouadeId) where.chefEscouadeId = chefEscouadeId;
 
         // Filtrage automatique par maison de transit pour TRANSITAIRE/DECLARANT
         if (currentUser && !['ADMIN', 'AGENT', 'SUPERVISEUR'].includes(currentUser.role)) {

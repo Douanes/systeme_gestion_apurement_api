@@ -75,6 +75,15 @@ export class OrdreMissionPaginationQueryDto {
     escouadeId?: number;
 
     @ApiPropertyOptional({
+        description: 'Filtrer par chef d\'escouade (ID de l\'agent)',
+        example: 1,
+    })
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    chefEscouadeId?: number;
+
+    @ApiPropertyOptional({
         description: 'Date de début minimum',
         example: '2024-01-01',
     })
@@ -166,6 +175,24 @@ export class AuditNonApuresQueryDto {
     @Type(() => Number)
     @IsInt()
     maisonTransitId?: number;
+
+    @ApiPropertyOptional({
+        description: 'Filtrer par escouade',
+        example: 1,
+    })
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    escouadeId?: number;
+
+    @ApiPropertyOptional({
+        description: 'Filtrer par chef d\'escouade (ID de l\'agent)',
+        example: 1,
+    })
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    chefEscouadeId?: number;
 
     @ApiPropertyOptional({
         description: 'Champ de tri',

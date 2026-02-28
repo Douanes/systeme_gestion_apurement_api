@@ -185,7 +185,23 @@ export class CreateNestedConteneurDto {
     numPlomb?: string;
 
     @ApiPropertyOptional({
-        description: 'Nom du conducteur',
+        description: 'Type de conteneur (ex: 20pieds, 40pieds, etc.)',
+        example: '40pieds',
+    })
+    @IsOptional()
+    @IsString()
+    typeConteneur?: string;
+
+    @ApiPropertyOptional({
+        description: 'Immatriculation du camion porteur',
+        example: 'DK-1234-AB',
+    })
+    @IsOptional()
+    @IsString()
+    camionImmatriculation?: string;
+
+    @ApiPropertyOptional({
+        description: 'Nom du conducteur (si différent du camion ou si non lié)',
         example: 'Amadou Fall',
     })
     @IsOptional()
@@ -251,6 +267,14 @@ export class CreateNestedVoitureDto {
     @IsString()
     @IsNotEmpty()
     chassis: string;
+
+    @ApiPropertyOptional({
+        description: 'Immatriculation du camion porteur (si transporté par camion)',
+        example: 'DK-1234-AB',
+    })
+    @IsOptional()
+    @IsString()
+    camionImmatriculation?: string;
 
     @ApiPropertyOptional({
         description: 'Nom du conducteur',
@@ -724,6 +748,27 @@ export class OrdreMissionResponseDto {
     observations?: string | null;
 
     @ApiPropertyOptional({
+        description: 'Conteneurs',
+        type: 'array',
+        example: [],
+    })
+    conteneurs?: any[];
+
+    @ApiPropertyOptional({
+        description: 'Camions',
+        type: 'array',
+        example: [],
+    })
+    camions?: any[];
+
+    @ApiPropertyOptional({
+        description: 'Voitures',
+        type: 'array',
+        example: [],
+    })
+    voitures?: any[];
+
+    @ApiPropertyOptional({
         description: 'ID du chef de bureau (snapshot au moment de la création)',
         example: 3,
         nullable: true,
@@ -1001,6 +1046,7 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
         parcelle: {
             nbreColisParcelle: number;
             poidsParcelle: number;
+            numeroParcelle?: number | null;
         };
         colis?: Array<{
             id: number;
@@ -1021,16 +1067,23 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
                 id: 1,
                 numConteneur: 'MSCU1234567',
                 numPlomb: 'PLB-2024-001',
+                typeConteneur: '40pieds',
                 driverName: 'Amadou Fall',
                 driverNationality: 'Sénégalais',
                 phone: '+221 77 123 45 67',
+                ordreMissionCamionId: 1,
             },
         ],
     })
     conteneurs?: Array<{
         id: number;
         numConteneur: string;
-        driverName?: string | null;  // Changed to allow null
+        numPlomb?: string | null;
+        typeConteneur?: string | null;
+        driverName?: string | null;
+        driverNationality?: string | null;
+        phone?: string | null;
+        ordreMissionCamionId?: number | null;
     }>;
 
     @ApiPropertyOptional({
@@ -1066,6 +1119,7 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
                 driverName: 'Fatou Sow',
                 driverNationality: 'Sénégalaise',
                 phone: '+221 77 345 67 89',
+                ordreMissionCamionId: 1,
             },
         ],
     })
@@ -1075,6 +1129,7 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
         driverName?: string | null;
         driverNationality?: string | null;
         phone?: string | null;
+        ordreMissionCamionId?: number | null;
     }>;
 
     @ApiPropertyOptional({

@@ -118,6 +118,23 @@ export class OrdreMissionController {
                             type: 'RECTIFICATION_POIDS_COLIS',
                             createdAt: '2024-01-15T11:00:00.000Z'
                         },
+                        conteneurs: [
+                            {
+                                id: 1,
+                                numConteneur: 'MSCU1234567',
+                                numPlomb: 'PLB-2024-001',
+                                typeConteneur: '40pieds',
+                                ordreMissionCamionId: 1
+                            }
+                        ],
+                        camions: [
+                            {
+                                id: 1,
+                                immatriculation: 'DK-1234-AB',
+                                driverName: 'Moussa Diop'
+                            }
+                        ],
+                        voitures: [],
                         createdAt: '2024-01-15T10:30:00.000Z',
                         updatedAt: '2024-01-15T10:30:00.000Z',
                     },

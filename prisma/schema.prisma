@@ -295,6 +295,7 @@ model OrdreMissionDeclaration {
   // Quantités pour cette parcelle spécifique
   nbreColisParcelle Int     @map("nbre_colis_parcelle")
   poidsParcelle     Decimal @map("poids_parcelle") @db.Decimal(12, 2)
+  numeroParcelle    Int?    @map("numero_parcelle")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -417,6 +418,10 @@ model OrdreMissionCamion {
   ordreMission OrdreMission @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
   camion       Camion       @relation(fields: [camionId], references: [id], onDelete: Cascade)
 
+  // Relations pour le groupement
+  conteneurs   OrdreMissionConteneur[]
+  voitures     OrdreMissionVoiture[]
+
   @@unique([ordreMissionId, camionId])
   @@map("ordre_mission_camions")
 }
@@ -434,19 +439,22 @@ model Conteneur {
 }
 
 model OrdreMissionConteneur {
-  id                Int       @id @default(autoincrement())
-  ordreMissionId    Int       @map("ordre_mission_id")
-  conteneurId       Int       @map("conteneur_id")
-  numPlomb          String?   @map("num_plomb") @db.VarChar(255)
-  driverName        String?   @map("driver_name") @db.VarChar(255)
-  driverNationality String?   @map("driver_nationality") @db.VarChar(255)
-  phone             String?   @map("phone") @db.VarChar(50)
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
-  deletedAt         DateTime? @map("deleted_at")
+  id                   Int       @id @default(autoincrement())
+  ordreMissionId       Int       @map("ordre_mission_id")
+  conteneurId          Int       @map("conteneur_id")
+  numPlomb             String?   @map("num_plomb") @db.VarChar(255)
+  typeConteneur        String?   @map("type_conteneur") @db.VarChar(50)
+  driverName           String?   @map("driver_name") @db.VarChar(255)
+  driverNationality    String?   @map("driver_nationality") @db.VarChar(255)
+  phone                String?   @map("phone") @db.VarChar(50)
+  ordreMissionCamionId Int?      @map("ordre_mission_camion_id")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  deletedAt            DateTime? @map("deleted_at")
 
-  ordreMission OrdreMission @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
-  conteneur    Conteneur    @relation(fields: [conteneurId], references: [id], onDelete: Cascade)
+  ordreMission       OrdreMission        @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
+  conteneur          Conteneur           @relation(fields: [conteneurId], references: [id], onDelete: Cascade)
+  ordreMissionCamion OrdreMissionCamion? @relation(fields: [ordreMissionCamionId], references: [id])
 
   @@unique([ordreMissionId, conteneurId])
   @@map("ordre_mission_conteneurs")
@@ -465,18 +473,20 @@ model Voiture {
 }
 
 model OrdreMissionVoiture {
-  id                Int       @id @default(autoincrement())
-  ordreMissionId    Int       @map("ordre_mission_id")
-  voitureId         Int       @map("voiture_id")
-  driverName        String?   @map("driver_name") @db.VarChar(255)
-  driverNationality String?   @map("driver_nationality") @db.VarChar(255)
-  phone             String?   @map("phone") @db.VarChar(50)
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
-  deletedAt         DateTime? @map("deleted_at")
+  id                   Int       @id @default(autoincrement())
+  ordreMissionId       Int       @map("ordre_mission_id")
+  voitureId            Int       @map("voiture_id")
+  driverName           String?   @map("driver_name") @db.VarChar(255)
+  driverNationality    String?   @map("driver_nationality") @db.VarChar(255)
+  phone                String?   @map("phone") @db.VarChar(50)
+  ordreMissionCamionId Int?      @map("ordre_mission_camion_id")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  deletedAt            DateTime? @map("deleted_at")
 
-  ordreMission OrdreMission @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
-  voiture      Voiture      @relation(fields: [voitureId], references: [id], onDelete: Cascade)
+  ordreMission       OrdreMission        @relation(fields: [ordreMissionId], references: [id], onDelete: Cascade)
+  voiture            Voiture             @relation(fields: [voitureId], references: [id], onDelete: Cascade)
+  ordreMissionCamion OrdreMissionCamion? @relation(fields: [ordreMissionCamionId], references: [id])
 
   @@unique([ordreMissionId, voitureId])
   @@map("ordre_mission_voitures")
