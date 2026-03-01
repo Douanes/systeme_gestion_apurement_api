@@ -121,6 +121,10 @@ export class OrdreMissionService {
                 driverNationality: c.driverNationality,
                 phone: c.phone,
                 ordreMissionCamionId: c.ordreMissionCamionId,
+                ordreMissionCamion: c.ordreMissionCamion ? {
+                    id: c.ordreMissionCamion.id,
+                    immatriculation: c.ordreMissionCamion.camion?.immatriculation,
+                } : null,
             })) || [],
             camions: (ordreMission as any).camions?.map(c => ({
                 id: c.id,
@@ -136,6 +140,10 @@ export class OrdreMissionService {
                 driverNationality: v.driverNationality,
                 phone: v.phone,
                 ordreMissionCamionId: v.ordreMissionCamionId,
+                ordreMissionCamion: v.ordreMissionCamion ? {
+                    id: v.ordreMissionCamion.id,
+                    immatriculation: v.ordreMissionCamion.camion?.immatriculation,
+                } : null,
             })) || [],
         };
     }

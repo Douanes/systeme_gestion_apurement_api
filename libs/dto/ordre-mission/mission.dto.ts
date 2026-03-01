@@ -1118,6 +1118,10 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
         driverNationality?: string | null;
         phone?: string | null;
         ordreMissionCamionId?: number | null;
+        ordreMissionCamion?: {
+            id: number;
+            immatriculation: string;
+        } | null;
     }>;
 
     @ApiPropertyOptional({
@@ -1164,6 +1168,10 @@ export class OrdreMissionWithRelationsDto extends OrdreMissionResponseDto {
         driverNationality?: string | null;
         phone?: string | null;
         ordreMissionCamionId?: number | null;
+        ordreMissionCamion?: {
+            id: number;
+            immatriculation: string;
+        } | null;
     }>;
 
     @ApiPropertyOptional({
