@@ -87,7 +87,10 @@ export class OrdreMissionService {
     /**
      * Transform Prisma OrdreMission to OrdreMissionResponseDto
      */
-    private toResponseDto(ordreMission: OrdreMission): OrdreMissionResponseDto {
+    private toResponseDto(
+        ordreMission: OrdreMission,
+        includeFullTransport: boolean = false,
+    ): OrdreMissionResponseDto {
         return {
             id: ordreMission.id,
             number: ordreMission.number,
@@ -121,10 +124,13 @@ export class OrdreMissionService {
                 driverNationality: c.driverNationality,
                 phone: c.phone,
                 ordreMissionCamionId: c.ordreMissionCamionId,
-                ordreMissionCamion: c.ordreMissionCamion ? {
-                    id: c.ordreMissionCamion.id,
-                    immatriculation: c.ordreMissionCamion.camion?.immatriculation,
-                } : null,
+                ordreMissionCamion:
+                    includeFullTransport && c.ordreMissionCamion
+                        ? {
+                            id: c.ordreMissionCamion.id,
+                            immatriculation: c.ordreMissionCamion.camion?.immatriculation,
+                        }
+                        : null,
             })) || [],
             camions: (ordreMission as any).camions?.map(c => ({
                 id: c.id,
@@ -140,10 +146,13 @@ export class OrdreMissionService {
                 driverNationality: v.driverNationality,
                 phone: v.phone,
                 ordreMissionCamionId: v.ordreMissionCamionId,
-                ordreMissionCamion: v.ordreMissionCamion ? {
-                    id: v.ordreMissionCamion.id,
-                    immatriculation: v.ordreMissionCamion.camion?.immatriculation,
-                } : null,
+                ordreMissionCamion:
+                    includeFullTransport && v.ordreMissionCamion
+                        ? {
+                            id: v.ordreMissionCamion.id,
+                            immatriculation: v.ordreMissionCamion.camion?.immatriculation,
+                        }
+                        : null,
             })) || [],
         };
     }
@@ -454,7 +463,7 @@ export class OrdreMissionService {
             }
         }
 
-        return this.toResponseDto(ordreMission);
+        return this.toResponseDto(ordreMission, true);
     }
 
     /**
@@ -729,8 +738,44 @@ export class OrdreMissionService {
             );
         }
 
+        const declarationIds = (ordreMission as any).declarations.map(
+            (d) => d.declaration.id
+        );
+
+        // Compter le nombre de parcelles par déclaration et trouver le max
+        const parcellesCounts = await this.prisma.ordreMissionDeclaration.groupBy({
+            by: ['declarationId'],
+            where: {
+                declarationId: { in: declarationIds },
+                deletedAt: null,
+            },
+            _count: {
+                declarationId: true,
+            },
+        });
+
+        const maxParcelles =
+            parcellesCounts.length > 0
+                ? Math.max(...parcellesCounts.map((p) => p._count.declarationId))
+                : 0;
+
+        // Déterminer le statut de livraison
+        const declarationsNonLivrees = (ordreMission as any).declarations.filter(
+            (d) => d.declaration.nbreColisRestant > 0
+        );
+
+        let statutLivraisonParcelle: StatutLivraisonParcelle | undefined;
+
+        if (maxParcelles > 0) {
+            if (declarationsNonLivrees.length === 0) {
+                statutLivraisonParcelle = StatutLivraisonParcelle.TOTALEMENT_LIVRE;
+            } else {
+                statutLivraisonParcelle = StatutLivraisonParcelle.PARTIELLEMENT_LIVRE;
+            }
+        }
+
         return {
-            ...this.toResponseDto(ordreMission as any),
+            ...this.toResponseDto(ordreMission as any, true),
             depositaire: (ordreMission as any).depositaire,
             maisonTransit: (ordreMission as any).maisonTransit,
             createdBy: (ordreMission as any).createdBy,
@@ -746,6 +791,8 @@ export class OrdreMissionService {
             chefSection: (ordreMission as any).chefSection || null,
             chefEscouade: (ordreMission as any).chefEscouade || null,
             adjointEscouade: (ordreMission as any).adjointEscouade || null,
+            nbreParcelles: maxParcelles,
+            statutLivraisonParcelle,
             declarations: (ordreMission as any).declarations.map((omd: any) => ({
                 id: omd.declaration.id,
                 numeroDeclaration: omd.declaration.numeroDeclaration,
