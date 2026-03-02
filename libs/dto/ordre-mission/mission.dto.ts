@@ -814,7 +814,7 @@ export class OrdreMissionResponseDto {
         nullable: true,
     })
     chefSectionId?: number | null;
-    
+
     @ApiPropertyOptional({
         description: 'ID du chef d\'escouade (snapshot au moment de la création)',
         example: 6,

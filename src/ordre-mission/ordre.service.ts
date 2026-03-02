@@ -662,7 +662,6 @@ export class OrdreMissionService {
         id: number,
         includeRelations = false,
     ): Promise<OrdreMissionResponseDto | OrdreMissionWithRelationsDto> {
-
         // Si on ne veut pas les relations, on fait une requête simple
         if (!includeRelations) {
             const ordre = await (this.prisma.ordreMission as any).findFirst({
@@ -684,7 +683,6 @@ export class OrdreMissionService {
 
             return this.toResponseDto(ordre);
         }
-
 
         const ordreMission = await (this.prisma.ordreMission as any).findFirst({
             where: { id, deletedAt: null },
@@ -886,7 +884,10 @@ export class OrdreMissionService {
                 driverName: c.driverName,
                 driverNationality: c.driverNationality,
                 phone: c.phone,
-                ordreMissionCamionId: c.ordreMissionCamionId,
+                ordreMissionCamion: c.ordreMissionCamion ? {
+                    id: c.ordreMissionCamion.id,
+                    immatriculation: c.ordreMissionCamion.camion?.immatriculation,
+                } : null,
             })),
             camions: (ordreMission as any).camions.map((c: any) => ({
                 id: c.camion.id,
@@ -901,7 +902,10 @@ export class OrdreMissionService {
                 driverName: v.driverName,
                 driverNationality: v.driverNationality,
                 phone: v.phone,
-                ordreMissionCamionId: v.ordreMissionCamionId,
+                ordreMissionCamion: v.ordreMissionCamion ? {
+                    id: v.ordreMissionCamion.id,
+                    immatriculation: v.ordreMissionCamion.camion?.immatriculation,
+                } : null,
             })),
             documents: (ordreMission as any).documents?.map((doc: any) => ({
                 id: doc.id,
