@@ -662,6 +662,30 @@ export class OrdreMissionService {
         id: number,
         includeRelations = false,
     ): Promise<OrdreMissionResponseDto | OrdreMissionWithRelationsDto> {
+
+        // Si on ne veut pas les relations, on fait une requête simple
+        if (!includeRelations) {
+            const ordre = await (this.prisma.ordreMission as any).findFirst({
+                where: { id, deletedAt: null },
+                include: {
+                    _count: {
+                        select: { documents: { where: { deletedAt: null } } },
+                    },
+                    modificationRequests: {
+                        orderBy: { createdAt: 'desc' },
+                        take: 1,
+                    },
+                }
+            });
+
+            if (!ordre) {
+                throw new NotFoundException(`Ordre de mission avec l'ID ${id} non trouvé`);
+            }
+
+            return this.toResponseDto(ordre);
+        }
+
+
         const ordreMission = await (this.prisma.ordreMission as any).findFirst({
             where: { id, deletedAt: null },
             include: {
@@ -693,7 +717,7 @@ export class OrdreMissionService {
                 },
                 conteneurs: {
                     where: { deletedAt: null },
-                    include: { 
+                    include: {
                         conteneur: true,
                         ordreMissionCamion: {
                             include: { camion: true }
@@ -706,7 +730,7 @@ export class OrdreMissionService {
                 },
                 voitures: {
                     where: { deletedAt: null },
-                    include: { 
+                    include: {
                         voiture: true,
                         ordreMissionCamion: {
                             include: { camion: true }
@@ -862,6 +886,7 @@ export class OrdreMissionService {
                 driverName: c.driverName,
                 driverNationality: c.driverNationality,
                 phone: c.phone,
+                ordreMissionCamionId: c.ordreMissionCamionId,
             })),
             camions: (ordreMission as any).camions.map((c: any) => ({
                 id: c.camion.id,
@@ -870,12 +895,13 @@ export class OrdreMissionService {
                 driverNationality: c.driverNationality,
                 phone: c.phone,
             })),
-            voitures: ordreMission.voitures.map((v) => ({
-                id: v.voiture.id,
+            voitures: (ordreMission as any).voitures.map((v: any) => ({
+                id: v.id,
                 chassis: v.voiture.chassis,
                 driverName: v.driverName,
                 driverNationality: v.driverNationality,
                 phone: v.phone,
+                ordreMissionCamionId: v.ordreMissionCamionId,
             })),
             documents: (ordreMission as any).documents?.map((doc: any) => ({
                 id: doc.id,
@@ -1336,8 +1362,8 @@ export class OrdreMissionService {
                 },
             });
 
-            const isAuthorized = 
-                (systemParam?.chefBureau?.userId === currentUser.id) || 
+            const isAuthorized =
+                (systemParam?.chefBureau?.userId === currentUser.id) ||
                 (systemParam?.chefSection?.userId === currentUser.id) ||
                 currentUser.role === 'ADMIN';
 
@@ -1408,8 +1434,8 @@ export class OrdreMissionService {
                 },
             });
 
-            const isAuthorized = 
-                (systemParam?.chefBureau?.userId === currentUser.id) || 
+            const isAuthorized =
+                (systemParam?.chefBureau?.userId === currentUser.id) ||
                 (systemParam?.chefSection?.userId === currentUser.id) ||
                 currentUser.role === 'ADMIN';
 
@@ -1493,7 +1519,7 @@ export class OrdreMissionService {
      * Supprimer un ordre (soft delete)
      */
     async remove(id: number): Promise<void> {
-         const ordreMission = await this.prisma.ordreMission.findUnique({
+        const ordreMission = await this.prisma.ordreMission.findUnique({
             where: { id },
         });
 
