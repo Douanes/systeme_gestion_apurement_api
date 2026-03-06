@@ -231,7 +231,10 @@ export class OrdreMissionService {
 
             if (createOrdreMissionDto.declarations?.length) {
                 for (const decl of createOrdreMissionDto.declarations) {
-                    const totauxParcelle = colisParDeclaration.get(decl.numeroDeclaration) || { nbreColis: 0, poids: 0 };
+                    const isDeclActive = decl.isActive !== false;
+                    const totauxParcelle = isDeclActive
+                        ? (colisParDeclaration.get(decl.numeroDeclaration) || { nbreColis: 0, poids: 0 })
+                        : { nbreColis: 0, poids: 0 };
 
                     // Chercher une déclaration existante
                     let declaration = await tx.declaration.findFirst({
@@ -239,19 +242,21 @@ export class OrdreMissionService {
                     });
 
                     if (declaration) {
-                        // Déclaration existe: mettre à jour les quantités restantes
-                        declaration = await tx.declaration.update({
-                            where: { id: declaration.id },
-                            data: {
-                                nbreColisRestant: {
-                                    decrement: totauxParcelle.nbreColis,
+                        // Déclaration existe: mettre à jour les quantités restantes uniquement si utilisée
+                        if (isDeclActive) {
+                            declaration = await tx.declaration.update({
+                                where: { id: declaration.id },
+                                data: {
+                                    nbreColisRestant: {
+                                        decrement: totauxParcelle.nbreColis,
+                                    },
+                                    poidsRestant: {
+                                        decrement: totauxParcelle.poids,
+                                    },
+                                    updatedAt: new Date(),
                                 },
-                                poidsRestant: {
-                                    decrement: totauxParcelle.poids,
-                                },
-                                updatedAt: new Date(),
-                            },
-                        });
+                            });
+                        }
                     } else {
                         // Nouvelle déclaration: créer avec les totaux fournis
                         // nbreColisRestant = nbreColisTotal - nbreColisParcelle
@@ -290,6 +295,7 @@ export class OrdreMissionService {
                             nbreColisParcelle: totauxParcelle.nbreColis,
                             poidsParcelle: totauxParcelle.poids,
                             numeroParcelle: existingParcellesCount + 1,
+                            isActive: isDeclActive,
                         },
                     });
                 }
@@ -298,6 +304,10 @@ export class OrdreMissionService {
             // 4. Créer les colis (liés aux déclarations ET à l'ordre de mission)
             if (createOrdreMissionDto.colis?.length) {
                 for (const coli of createOrdreMissionDto.colis) {
+                    // Ignorer les colis d'une déclaration inactive
+                    const isDeclActive = createOrdreMissionDto.declarations?.find(d => d.numeroDeclaration === coli.numeroDeclaration)?.isActive !== false;
+                    if (!isDeclActive) continue;
+
                     const declarationId = declarationsCreees.get(coli.numeroDeclaration);
 
                     if (!declarationId) {
@@ -528,7 +538,11 @@ export class OrdreMissionService {
                     declarations: {
                         where: { deletedAt: null },
                         include: {
-                            declaration: true,
+                            declaration: {
+                                include: {
+                                    colis: { where: { deletedAt: null } }
+                                }
+                            },
                         },
                     },
                     colis: {
@@ -625,16 +639,18 @@ export class OrdreMissionService {
                     declarations: ordre.declarations.map((d) => ({
                         id: d.declaration.id,
                         numeroDeclaration: d.declaration.numeroDeclaration,
-                        colis: ((ordre as any).colis || [])
-                            .filter((c) => c.declarationId === d.declaration.id)
-                            .map((c) => ({
-                                id: c.id,
-                                natureMarchandise: c.natureMarchandise,
-                                positionTarifaire: c.positionTarifaire,
-                                nbreColis: c.nbreColis,
-                                poids: c.poids ? c.poids.toNumber() : null,
-                                valeurDeclaree: c.valeurDeclaree ? c.valeurDeclaree.toNumber() : null,
-                            })),
+                        isActive: d.isActive,
+                        colis: (d.isActive !== false
+                            ? ((ordre as any).colis || []).filter((c: any) => c.declarationId === d.declaration.id)
+                            : Array.from(new Map((d.declaration.colis || []).map((c: any) => [c.natureMarchandise, c])).values())
+                        ).map((c: any) => ({
+                            id: c.id,
+                            natureMarchandise: c.natureMarchandise,
+                            positionTarifaire: c.positionTarifaire,
+                            nbreColis: c.nbreColis,
+                            poids: c.poids ? (typeof c.poids.toNumber === 'function' ? c.poids.toNumber() : Number(c.poids)) : null,
+                            valeurDeclaree: c.valeurDeclaree ? (typeof c.valeurDeclaree.toNumber === 'function' ? c.valeurDeclaree.toNumber() : Number(c.valeurDeclaree)) : null,
+                        })),
                     })),
                     nbreParcelles: maxParcelles,
                     statutLivraisonParcelle,
@@ -706,6 +722,7 @@ export class OrdreMissionService {
                                 maisonTransit: true,
                                 depositaire: true,
                                 bureauSortie: true,
+                                colis: { where: { deletedAt: null } },
                             },
                         },
                     },
@@ -828,6 +845,7 @@ export class OrdreMissionService {
                     ? omd.declaration.poidsRestant.toNumber()
                     : 0,
                 statutApurement: omd.declaration.statutApurement,
+                isActive: omd.isActive, // Added isActive here
                 // Relations de la déclaration
                 regime: omd.declaration.regime
                     ? {
@@ -863,19 +881,18 @@ export class OrdreMissionService {
                         : 0,
                     numeroParcelle: omd.numeroParcelle,
                 },
-                // Inclure uniquement les colis de cet ordre pour cette déclaration
-                colis: ((ordreMission as any).colis || [])
-                    .filter((c: any) => c.declarationId === omd.declaration.id)
-                    .map((c: any) => ({
-                        id: c.id,
-                        natureMarchandise: c.natureMarchandise,
-                        positionTarifaire: c.positionTarifaire,
-                        nbreColis: c.nbreColis,
-                        poids: c.poids ? c.poids.toNumber() : null,
-                        valeurDeclaree: c.valeurDeclaree
-                            ? c.valeurDeclaree.toNumber()
-                            : null,
-                    })),
+                // Inclure uniquement les colis de cet ordre pour cette déclaration, ou fallback sur la déclaration si inactive
+                colis: (omd.isActive !== false
+                    ? ((ordreMission as any).colis || []).filter((c: any) => c.declarationId === omd.declaration.id)
+                    : Array.from(new Map((omd.declaration.colis || []).map((c: any) => [c.natureMarchandise, c])).values())
+                ).map((c: any) => ({
+                    id: c.id,
+                    natureMarchandise: c.natureMarchandise,
+                    positionTarifaire: c.positionTarifaire,
+                    nbreColis: c.nbreColis,
+                    poids: c.poids ? (typeof c.poids.toNumber === 'function' ? c.poids.toNumber() : Number(c.poids)) : null,
+                    valeurDeclaree: c.valeurDeclaree ? (typeof c.valeurDeclaree.toNumber === 'function' ? c.valeurDeclaree.toNumber() : Number(c.valeurDeclaree)) : null,
+                })),
             })),
             conteneurs: (ordreMission as any).conteneurs.map((c: any) => ({
                 id: c.conteneur.id,
@@ -1028,17 +1045,19 @@ export class OrdreMissionService {
 
                 // Réincrémenter les quantités restantes des anciennes déclarations
                 for (const parcelle of oldParcelles) {
-                    await tx.declaration.update({
-                        where: { id: parcelle.declarationId },
-                        data: {
-                            nbreColisRestant: {
-                                increment: parcelle.nbreColisParcelle,
+                    if (parcelle.isActive !== false) {
+                        await tx.declaration.update({
+                            where: { id: parcelle.declarationId },
+                            data: {
+                                nbreColisRestant: {
+                                    increment: parcelle.nbreColisParcelle,
+                                },
+                                poidsRestant: {
+                                    increment: parcelle.poidsParcelle,
+                                },
                             },
-                            poidsRestant: {
-                                increment: parcelle.poidsParcelle,
-                            },
-                        },
-                    });
+                        });
+                    }
                 }
 
                 // Soft delete les anciennes parcelles
@@ -1056,7 +1075,10 @@ export class OrdreMissionService {
                 const declarationsCreees: Map<string, number> = new Map();
 
                 for (const decl of updateOrdreMissionDto.declarations) {
-                    const totauxParcelle = colisParDeclaration.get(decl.numeroDeclaration) || { nbreColis: 0, poids: 0 };
+                    const isDeclActive = decl.isActive !== false;
+                    const totauxParcelle = isDeclActive
+                        ? (colisParDeclaration.get(decl.numeroDeclaration) || { nbreColis: 0, poids: 0 })
+                        : { nbreColis: 0, poids: 0 };
 
                     // Chercher ou créer la déclaration
                     let declaration = await tx.declaration.findFirst({
@@ -1064,19 +1086,21 @@ export class OrdreMissionService {
                     });
 
                     if (declaration) {
-                        // Mettre à jour les quantités restantes
-                        declaration = await tx.declaration.update({
-                            where: { id: declaration.id },
-                            data: {
-                                nbreColisRestant: {
-                                    decrement: totauxParcelle.nbreColis,
+                        // Mettre à jour les quantités restantes si la déclaration est utilisée
+                        if (isDeclActive) {
+                            declaration = await tx.declaration.update({
+                                where: { id: declaration.id },
+                                data: {
+                                    nbreColisRestant: {
+                                        decrement: totauxParcelle.nbreColis,
+                                    },
+                                    poidsRestant: {
+                                        decrement: totauxParcelle.poids,
+                                    },
+                                    updatedAt: new Date(),
                                 },
-                                poidsRestant: {
-                                    decrement: totauxParcelle.poids,
-                                },
-                                updatedAt: new Date(),
-                            },
-                        });
+                            });
+                        }
                     } else {
                         // Créer nouvelle déclaration avec les totaux fournis
                         // nbreColisRestant = nbreColisTotal - nbreColisParcelle
@@ -1109,6 +1133,7 @@ export class OrdreMissionService {
                             declarationId: declaration.id,
                             nbreColisParcelle: totauxParcelle.nbreColis,
                             poidsParcelle: totauxParcelle.poids,
+                            isActive: isDeclActive,
                         },
                     });
                 }
@@ -1121,6 +1146,10 @@ export class OrdreMissionService {
 
                 if (updateOrdreMissionDto.colis && updateOrdreMissionDto.colis.length > 0) {
                     for (const coli of updateOrdreMissionDto.colis) {
+                        // Ignorer les colis d'une déclaration inactive
+                        const isDeclActive = updateOrdreMissionDto.declarations?.find(d => d.numeroDeclaration === coli.numeroDeclaration)?.isActive !== false;
+                        if (!isDeclActive) continue;
+
                         const declarationId = declarationsCreees.get(coli.numeroDeclaration);
 
                         if (!declarationId) {

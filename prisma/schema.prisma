@@ -105,21 +105,21 @@ model User {
   passwordResetTokens   PasswordResetToken[] // Tokens de réinitialisation de mot de passe
   agent                 Agent?
   userPermissions       UserPermission[] // Permissions personnalisées
-  maisonTransitRequests  MaisonTransitRequest[]   @relation("RequestCreator")
-  reviewedRequests       MaisonTransitRequest[]   @relation("RequestReviewer")
-  ordreMissionDocuments  OrdreMissionDocument[]
-  
-  modificationRequests    OrdreMissionModificationRequest[] @relation("ModifRequester")
-  reviewedModifRequests   OrdreMissionModificationRequest[] @relation("ModifReviewer")
-  notifications           Notification[]
+  maisonTransitRequests MaisonTransitRequest[]   @relation("RequestCreator")
+  reviewedRequests      MaisonTransitRequest[]   @relation("RequestReviewer")
+  ordreMissionDocuments OrdreMissionDocument[]
+
+  modificationRequests  OrdreMissionModificationRequest[] @relation("ModifRequester")
+  reviewedModifRequests OrdreMissionModificationRequest[] @relation("ModifReviewer")
+  notifications         Notification[]
 
   @@map("users")
 }
 
 model Regime {
-  id          Int     @id @default(autoincrement())
-  name        String
-  description String?
+  id                    Int     @id @default(autoincrement())
+  name                  String
+  description           String?
   nbreNatureMarchandise Int?
 
   createdAt DateTime  @default(now())
@@ -232,56 +232,56 @@ model MaisonTransit {
   updatedAt     DateTime  @updatedAt @map("updated_at")
   deletedAt     DateTime? @map("deleted_at")
 
-  responsable   User?                    @relation("MaisonTransitResponsable", fields: [responsableId], references: [id])
-  users         UserMaisonTransit[] // Nouvelle relation Many-to-Many
-  invitations   AccountActivationToken[] // Invitations pour staff
-  depositaires  Depositaire[]
-  declarations  Declaration[]
-  ordreMissions          OrdreMission[]
-  ordreMissionDocuments  OrdreMissionDocument[]
+  responsable           User?                    @relation("MaisonTransitResponsable", fields: [responsableId], references: [id])
+  users                 UserMaisonTransit[] // Nouvelle relation Many-to-Many
+  invitations           AccountActivationToken[] // Invitations pour staff
+  depositaires          Depositaire[]
+  declarations          Declaration[]
+  ordreMissions         OrdreMission[]
+  ordreMissionDocuments OrdreMissionDocument[]
 
   @@map("maisons_transits")
 }
 
 model OrdreMission {
-  id               Int                @id @default(autoincrement())
-  number           String             @unique @map("number") @db.VarChar(50)
-  destination      String?
-  itineraire       String?            @db.Text
-  dateOrdre        DateTime?          @map("date_ordre")
-  depositaireId    Int?               @map("depositaire_id")
-  maisonTransitId  Int?               @map("maison_transit_id")
-  createdById      Int?               @map("created_by")
-  statut           StatutOrdreMission @default(EN_COURS)
-  statutApurement  StatutApurement    @default(NON_APURE) @map("statut_apurement")
-  ecouadeId        Int?               @map("escouade_id")
-  agentEscorteurId Int?               @map("agent_escorteur_id")
-  bureauSortieId   Int?               @map("bureau_sortie_id")
-  chefBureauId       Int?               @map("chef_bureau_id")
-  chefSectionId      Int?               @map("chef_section_id")
-  chefEscouadeId     Int?               @map("chef_escouade_id")
-  adjointEscouadeId  Int?               @map("adjoint_escouade_id")
-  observations       String?            @db.Text
-  createdAt        DateTime           @default(now()) @map("created_at")
-  updatedAt        DateTime           @updatedAt @map("updated_at")
-  deletedAt        DateTime?          @map("deleted_at")
+  id                Int                @id @default(autoincrement())
+  number            String             @unique @map("number") @db.VarChar(50)
+  destination       String?
+  itineraire        String?            @db.Text
+  dateOrdre         DateTime?          @map("date_ordre")
+  depositaireId     Int?               @map("depositaire_id")
+  maisonTransitId   Int?               @map("maison_transit_id")
+  createdById       Int?               @map("created_by")
+  statut            StatutOrdreMission @default(EN_COURS)
+  statutApurement   StatutApurement    @default(NON_APURE) @map("statut_apurement")
+  ecouadeId         Int?               @map("escouade_id")
+  agentEscorteurId  Int?               @map("agent_escorteur_id")
+  bureauSortieId    Int?               @map("bureau_sortie_id")
+  chefBureauId      Int?               @map("chef_bureau_id")
+  chefSectionId     Int?               @map("chef_section_id")
+  chefEscouadeId    Int?               @map("chef_escouade_id")
+  adjointEscouadeId Int?               @map("adjoint_escouade_id")
+  observations      String?            @db.Text
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  deletedAt         DateTime?          @map("deleted_at")
 
-  depositaire    Depositaire?              @relation(fields: [depositaireId], references: [id], onDelete: SetNull)
-  createdBy      User?                     @relation(fields: [createdById], references: [id])
-  agentEscorteur Agent?                    @relation(fields: [agentEscorteurId], references: [id], onDelete: SetNull)
-  bureauSortie   BureauSortie?             @relation(fields: [bureauSortieId], references: [id], onDelete: SetNull)
-  maisonTransit  MaisonTransit?            @relation(fields: [maisonTransitId], references: [id], onDelete: SetNull)
-  ecouade        Escouade?                 @relation(fields: [ecouadeId], references: [id], onDelete: SetNull)
-  chefBureau     Agent?                    @relation("OrdreMissionChefBureau", fields: [chefBureauId], references: [id], onDelete: SetNull)
-  chefSection    Agent?                    @relation("OrdreMissionChefSection", fields: [chefSectionId], references: [id], onDelete: SetNull)
-  chefEscouade   Agent?                    @relation("OrdreMissionChefEscouade", fields: [chefEscouadeId], references: [id], onDelete: SetNull)
-  adjointEscouade Agent?                   @relation("OrdreMissionAdjointEscouade", fields: [adjointEscouadeId], references: [id], onDelete: SetNull)
-  declarations   OrdreMissionDeclaration[]
-  conteneurs     OrdreMissionConteneur[]
-  camions        OrdreMissionCamion[]
-  voitures       OrdreMissionVoiture[]
-  documents      OrdreMissionDocument[]
-  colis          Colis[]
+  depositaire          Depositaire?                      @relation(fields: [depositaireId], references: [id], onDelete: SetNull)
+  createdBy            User?                             @relation(fields: [createdById], references: [id])
+  agentEscorteur       Agent?                            @relation(fields: [agentEscorteurId], references: [id], onDelete: SetNull)
+  bureauSortie         BureauSortie?                     @relation(fields: [bureauSortieId], references: [id], onDelete: SetNull)
+  maisonTransit        MaisonTransit?                    @relation(fields: [maisonTransitId], references: [id], onDelete: SetNull)
+  ecouade              Escouade?                         @relation(fields: [ecouadeId], references: [id], onDelete: SetNull)
+  chefBureau           Agent?                            @relation("OrdreMissionChefBureau", fields: [chefBureauId], references: [id], onDelete: SetNull)
+  chefSection          Agent?                            @relation("OrdreMissionChefSection", fields: [chefSectionId], references: [id], onDelete: SetNull)
+  chefEscouade         Agent?                            @relation("OrdreMissionChefEscouade", fields: [chefEscouadeId], references: [id], onDelete: SetNull)
+  adjointEscouade      Agent?                            @relation("OrdreMissionAdjointEscouade", fields: [adjointEscouadeId], references: [id], onDelete: SetNull)
+  declarations         OrdreMissionDeclaration[]
+  conteneurs           OrdreMissionConteneur[]
+  camions              OrdreMissionCamion[]
+  voitures             OrdreMissionVoiture[]
+  documents            OrdreMissionDocument[]
+  colis                Colis[]
   modificationRequests OrdreMissionModificationRequest[]
 
   @@map("ordres_missions")
@@ -296,6 +296,7 @@ model OrdreMissionDeclaration {
   nbreColisParcelle Int     @map("nbre_colis_parcelle")
   poidsParcelle     Decimal @map("poids_parcelle") @db.Decimal(12, 2)
   numeroParcelle    Int?    @map("numero_parcelle")
+  isActive          Boolean @default(true) @map("is_active")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -419,8 +420,8 @@ model OrdreMissionCamion {
   camion       Camion       @relation(fields: [camionId], references: [id], onDelete: Cascade)
 
   // Relations pour le groupement
-  conteneurs   OrdreMissionConteneur[]
-  voitures     OrdreMissionVoiture[]
+  conteneurs OrdreMissionConteneur[]
+  voitures   OrdreMissionVoiture[]
 
   @@unique([ordreMissionId, camionId])
   @@map("ordre_mission_camions")
@@ -735,7 +736,7 @@ model OrdreMissionModificationRequest {
   reason          String                    @db.Text
   rejectionReason String?                   @map("rejection_reason") @db.Text
   status          ModificationRequestStatus @default(PENDING)
-  type            ModificationRequestType?   
+  type            ModificationRequestType?
   createdAt       DateTime                  @default(now()) @map("created_at")
   updatedAt       DateTime                  @updatedAt @map("updated_at")
   reviewedAt      DateTime?                 @map("reviewed_at")
