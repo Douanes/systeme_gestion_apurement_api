@@ -115,6 +115,13 @@ export class CreateNestedDeclarationDto {
     @IsOptional()
     @IsInt()
     regimeId?: number;
+
+    @ApiPropertyOptional({
+        description: 'Indique si la déclaration est utilisée pour cette parcelle (Ordre de mission)',
+        example: true,
+    })
+    @IsOptional()
+    isActive?: boolean;
 }
 
 export class CreateNestedColisDto {
